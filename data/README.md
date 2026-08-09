@@ -25,10 +25,57 @@ not cosmetic:
   rules or numbers question on their own**, and always presented as
   lower-authority than a primary source if the two ever disagree.
 
-This distinction should be encoded in retrieval/prompting (e.g. a
-`source_tier` field on each chunk, with the prompt instructed to
-prefer `primary` and to say so explicitly when only `secondary`
-content is available).
+This distinction is encoded in the schema below (`tier` on every page
+and chunk), with the prompt instructed to prefer `primary` and to say
+so explicitly when only `secondary` content is available.
+
+## Schema
+
+Two layers, defined in [ingestion/schema.py](../ingestion/schema.py) —
+deliberately not one flat schema, because trust/freshness/topic
+metadata varies *within* a page in ways a page-level record can't
+capture. A CRA TFSA page's contribution-limit sentence is a
+`numeric_fact` with a real `effective_date`; the same page's "what is
+a TFSA" paragraph is `conceptual` and evergreen. Two different chunks,
+same page — so that metadata has to live on the chunk, not the page.
+
+**Page** (`FetchedPage`, written today by `ingestion/fetch.py` to
+`data/raw/manifest.jsonl`) — provenance and source-authority context:
+`id`, `url`, `source_name`, `source_authority` (normalized slug, e.g.
+`cra`), `jurisdiction` (`federal | national | on | qc | bc | none`),
+`tier` (`primary | secondary`), `fetch_method`, `license`, `topic`,
+`default_topic_tags`, `fetched_at`, `page_issued`, `page_last_updated`
+(both best-effort, from the page's own `dcterms.issued` /
+`dcterms.modified` metadata where present), `content_hash` (sha256 —
+lets a re-run detect "this page didn't actually change"), plus
+`http_status` / `title` / `raw_html_path` / `content_length` / `error`.
+
+**Chunk** (`Chunk`, drafted now, written once `ingestion/pipeline.py`
+exists) — one per retrievable unit, several per page. Inherits
+`url` / `source_authority` / `tier` / `jurisdiction` from its parent
+page rather than re-deriving them, then adds what's genuinely
+per-chunk: `content_type` (`conceptual | numeric_fact | procedural |
+example`), `topic_tags` (starts as the page's `default_topic_tags`,
+refined per chunk), `effective_date` (when this fact became true —
+not the same as `page_last_updated`, which is when the *page* was
+last edited), and `review_date` (when *we* last confirmed the chunk is
+still accurate).
+
+`jurisdiction` keeps `national` distinct from `federal` on purpose:
+CIRO is a self-regulatory body recognized by provincial securities
+commissions, not a federal government department — collapsing that
+into "federal" would misrepresent how Canadian securities regulation
+actually works.
+
+Every source is validated against a controlled vocabulary
+(`SOURCE_AUTHORITIES`, `JURISDICTIONS`, `CONTENT_TYPES`,
+`TOPIC_TAGS_VOCAB`) at registration time via `validate_source_fields` /
+`validate_chunk_fields` — an unregistered authority, an invalid
+jurisdiction, or a typo'd tag raises immediately rather than silently
+reaching the knowledge base. `topic_tags` must include at least one
+account-type tag (`tfsa | rrsp | fhsa | resp | general_investing |
+regulatory`), which turns "do we have coverage?" into a checkable
+account-type × subtopic matrix instead of an eyeballed source list.
 
 ## Primary sources (government official / government-endorsed)
 
@@ -98,6 +145,14 @@ regardless, since none of these sites publish a rate limit.
 
 CRA contribution limits and thresholds change on a predictable cycle
 (new limits announced in the fall, tax bracket changes each January).
-Re-run ingestion for CRA pages at least at each of those windows, and
-record the fetch date per document so retrieval can surface "as of"
-context rather than silently serving stale numbers.
+Re-run ingestion for CRA pages at least at each of those windows.
+
+Two distinct dates now track this per chunk, and they answer different
+questions: `effective_date` is when a fact became true in the real
+world (e.g. the 2026 TFSA limit takes effect 2026-01-01, regardless of
+when CRA edited the page); `review_date` is when *we* last confirmed
+the chunk is still accurate. `page_last_updated`/`page_issued` (page
+level) and `content_hash` (page level) support this from the fetch
+side — a re-run that finds an unchanged hash needs no re-review; a
+changed hash on a page whose chunks include `numeric_fact` entries
+should trigger one before those chunks are trusted again.

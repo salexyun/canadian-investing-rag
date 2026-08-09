@@ -27,6 +27,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -98,24 +99,25 @@ def extract_title(html: str) -> str | None:
 _DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
 
-def extract_last_updated(html: str) -> str | None:
-    """Best-effort extraction of a page's self-reported last-modified date.
+def _extract_date(html: str, *, meta_name: str, time_property: str) -> str | None:
+    """Best-effort extraction of a page's self-reported date.
 
-    Government of Canada pages (canada.ca — CRA included) expose this
-    via a standard <meta name="dcterms.modified"> tag, which is far
-    more reliable than scraping the "Page details" footer widget.
-    Other sites vary; we fall back to <time property="dateModified">,
-    then any <time datetime="...">, then give up rather than guess.
+    Government of Canada pages (canada.ca — CRA included) expose both
+    issued and modified dates via standard <meta name="dcterms.*">
+    tags, far more reliable than scraping the "Page details" footer
+    widget. Other sites vary; we fall back to a matching <time
+    property="..."> tag, then any <time datetime="...">, then give up
+    rather than guess.
     """
     soup = BeautifulSoup(html, "lxml")
 
-    meta_tag = soup.find("meta", attrs={"name": "dcterms.modified"})
+    meta_tag = soup.find("meta", attrs={"name": meta_name})
     if meta_tag and meta_tag.get("content"):
         m = _DATE_RE.search(meta_tag["content"])
         if m:
             return m.group(0)
 
-    time_tag = soup.find("time", attrs={"property": "dateModified"})
+    time_tag = soup.find("time", attrs={"property": time_property})
     if time_tag and time_tag.get("datetime"):
         m = _DATE_RE.search(time_tag["datetime"])
         if m:
@@ -131,6 +133,14 @@ def extract_last_updated(html: str) -> str | None:
     return None
 
 
+def extract_last_updated(html: str) -> str | None:
+    return _extract_date(html, meta_name="dcterms.modified", time_property="dateModified")
+
+
+def extract_issued(html: str) -> str | None:
+    return _extract_date(html, meta_name="dcterms.issued", time_property="datePublished")
+
+
 def fetch_one(source: Source, browser) -> FetchedPage:
     fetched_at = datetime.now(timezone.utc).isoformat()
 
@@ -139,11 +149,18 @@ def fetch_one(source: Source, browser) -> FetchedPage:
     else:
         html, status, error = fetch_via_http(source)
 
+    common = dict(
+        id=source.id, url=source.url, source_name=source.source_name,
+        source_authority=source.source_authority, jurisdiction=source.jurisdiction,
+        tier=source.tier, fetch_method=source.fetch_method, license=source.license,
+        topic=source.topic, default_topic_tags=list(source.default_topic_tags),
+        fetched_at=fetched_at,
+    )
+
     if html is None:
         return FetchedPage(
-            id=source.id, url=source.url, source_name=source.source_name,
-            tier=source.tier, fetch_method=source.fetch_method, license=source.license,
-            topic=source.topic, fetched_at=fetched_at, page_last_updated=None,
+            **common,
+            page_issued=None, page_last_updated=None, content_hash=None,
             http_status=status, title=None, raw_html_path=None, content_length=0,
             error=error,
         )
@@ -154,10 +171,10 @@ def fetch_one(source: Source, browser) -> FetchedPage:
     out_path.write_text(html, encoding="utf-8")
 
     return FetchedPage(
-        id=source.id, url=source.url, source_name=source.source_name,
-        tier=source.tier, fetch_method=source.fetch_method, license=source.license,
-        topic=source.topic, fetched_at=fetched_at,
+        **common,
+        page_issued=extract_issued(html),
         page_last_updated=extract_last_updated(html),
+        content_hash=hashlib.sha256(html.encode("utf-8")).hexdigest(),
         http_status=status, title=extract_title(html),
         raw_html_path=str(out_path.relative_to(REPO_ROOT)),
         content_length=len(html),
