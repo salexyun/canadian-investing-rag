@@ -15,18 +15,32 @@ git clone https://github.com/<your-username>/canadian-investing-rag.git
 cd canadian-investing-rag
 cp .env.example .env
 # edit .env with your API key and any overrides
+
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+playwright install chromium   # needed for the CRA/CIRO/AMF fetch path — see below
 ```
 
 ## 2. Fetch the dataset
 
-Two fetch paths are needed — see [data/README.md](../data/README.md)
-for the full source list and why:
+`ingestion/fetch.py` pulls every page listed in
+[data/README.md](../data/README.md) and writes raw HTML to
+`data/raw/<tier>/<id>.html` plus a `data/raw/manifest.jsonl` index
+(one JSON record per page — url, tier, license, fetch timestamp, the
+page's self-reported last-modified date where available).
+
+It uses two fetch paths, chosen per source (see data/README.md for
+why): a headless-browser path (Playwright) for CRA, CIRO, and AMF,
+which block plain HTTP clients even though their `robots.txt` allows
+crawling; and a plain, self-identifying HTTP client for everything
+else (OSC/GetSmarterAboutMoney, FP Canada, MoneySense, RBC, TD,
+Questrade).
 
 ```bash
-python ingestion/fetch.py   # TODO: implement
-# - headless-browser path (Playwright) for CRA, CIRO, AMF (bot-protected)
-# - plain HTTP path for OSC/GetSmarterAboutMoney, Bank of Canada,
-#   open.canada.ca, FP Canada, MoneySense, RBC, TD, Questrade
+python ingestion/fetch.py                       # fetch everything
+python ingestion/fetch.py --tier primary         # just the primary tier
+python ingestion/fetch.py --only cra_tfsa cra_fhsa   # just specific sources
 ```
 
 ## 3. Run the ingestion pipeline (dlt)

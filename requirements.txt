@@ -1,8 +1,14 @@
 # Pin exact versions once finalized (reproducibility criterion).
-# Placeholder groupings for now:
 
-# ingestion
-dlt
+# ingestion — fetch step (ingestion/fetch.py)
+requests==2.34.2
+beautifulsoup4==4.15.0
+lxml==6.1.1
+playwright==1.62.0
+# after `pip install -r requirements.txt`, also run: playwright install chromium
+
+# ingestion — chunk + load step (ingestion/pipeline.py, not yet implemented)
+# dlt
 
 # retrieval / knowledge base
 # qdrant-client
