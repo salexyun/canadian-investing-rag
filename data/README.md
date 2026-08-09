@@ -55,10 +55,10 @@ exists) — one per retrievable unit, several per page. Inherits
 `url` / `source_authority` / `tier` / `jurisdiction` from its parent
 page rather than re-deriving them, then adds what's genuinely
 per-chunk: `content_type` (`conceptual | numeric_fact | procedural |
-example`), `topic_tags` (starts as the page's `default_topic_tags`,
-refined per chunk), `effective_date` (when this fact became true —
-not the same as `page_last_updated`, which is when the *page* was
-last edited), and `review_date` (when *we* last confirmed the chunk is
+example`), `facets` (starts as the page's `default_facets`, refined
+per chunk), `effective_date` (when this fact became true — not the
+same as `page_last_updated`, which is when the *page* was last
+edited), and `review_date` (when *we* last confirmed the chunk is
 still accurate).
 
 `jurisdiction` keeps `national` distinct from `federal` on purpose:
@@ -67,15 +67,51 @@ commissions, not a federal government department — collapsing that
 into "federal" would misrepresent how Canadian securities regulation
 actually works.
 
-Every source is validated against a controlled vocabulary
-(`SOURCE_AUTHORITIES`, `JURISDICTIONS`, `CONTENT_TYPES`,
-`TOPIC_TAGS_VOCAB`) at registration time via `validate_source_fields` /
-`validate_chunk_fields` — an unregistered authority, an invalid
-jurisdiction, or a typo'd tag raises immediately rather than silently
-reaching the knowledge base. `topic_tags` must include at least one
-account-type tag (`tfsa | rrsp | fhsa | resp | general_investing |
-regulatory`), which turns "do we have coverage?" into a checkable
-account-type × subtopic matrix instead of an eyeballed source list.
+### Facets
+
+Five dimensions, not one flat tag bag — a chunk about "withdrawing
+from a TFSA" and a chunk about "the dividend tax credit on
+non-registered investments" have nothing in common except both being
+investing content, and forcing them into the same tag vocabulary loses
+the ability to filter cleanly (e.g. "every `numeric_fact` chunk about
+`rrsp` + `withdrawing` + `non_resident`"):
+
+- **`account_type`** — required, single-valued, closed by construction
+  (Canada has exactly these registered-account types): `tfsa | rrsp |
+  rrif | fhsa | resp | rdsp | lira_lrsp | non_registered | none`
+- **`tax_concepts`** — bounded, multi-valued: `capital_gains |
+  capital_losses | superficial_loss | attribution_rules |
+  contribution_room | over_contribution_penalty | withholding_tax |
+  tax_deduction | tax_credit | dividend_tax_credit | oas_clawback`
+- **`investment_vehicles`** — bounded, multi-valued: `stocks | etfs |
+  mutual_funds | bonds | gics | reits | options | crypto`
+- **`actions`** — bounded, multi-valued: `contributing | withdrawing |
+  transferring | opening_account | filing_taxes | calculating_room`
+- **`special_situations`** — bounded, multi-valued: `death_and_estates
+  | divorce_separation | non_resident`. Elevated to its own facet
+  rather than left as a generic tag: this project's whole premise is
+  that residency/life-event status changes the answer, so it needs to
+  be filterable on its own, not buried.
+
+Not every page fits these five — CIRO/AMF/OSC-GSAM content is
+institutional/educational, not about a specific account+tax+vehicle+
+action. Those get `account_type="none"` and retrieval leans on
+`source_authority`/`topic` instead; that's an accepted gap, not an
+oversight, since the facets exist to make the core registered-account
+fact content filterable, not to force-fit everything.
+
+Every source is validated against these vocabularies (plus
+`SOURCE_AUTHORITIES`, `JURISDICTIONS`, `CONTENT_TYPES`) at
+registration time via `validate_source_fields` / `validate_chunk_fields`
+— an unregistered authority, an invalid jurisdiction, or a typo'd facet
+value raises immediately rather than silently reaching the knowledge
+base.
+
+**Coverage gap found by this schema, not by eyeballing:** running the
+15 current sources against the closed `account_type` set shows zero
+coverage for `rdsp` and `lira_lrsp`, and `rrif` only appears folded
+into the RRSP page rather than as its own account type. Worth filling
+when we expand breadth.
 
 ## Primary sources (government official / government-endorsed)
 

@@ -153,7 +153,7 @@ def fetch_one(source: Source, browser) -> FetchedPage:
         id=source.id, url=source.url, source_name=source.source_name,
         source_authority=source.source_authority, jurisdiction=source.jurisdiction,
         tier=source.tier, fetch_method=source.fetch_method, license=source.license,
-        topic=source.topic, default_topic_tags=list(source.default_topic_tags),
+        topic=source.topic, default_facets=source.default_facets,
         fetched_at=fetched_at,
     )
 

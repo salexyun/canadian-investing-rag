@@ -7,7 +7,7 @@
 
 - :class:`Chunk` — one per retrievable unit, several per page
   (``data/processed/chunks.jsonl``, once ``ingestion/pipeline.py``
-  exists). Trust/freshness/topic metadata that genuinely varies *within*
+  exists). Trust/freshness/facet metadata that genuinely varies *within*
   a page — a TFSA page's contribution-limit sentence is a
   ``numeric_fact`` with a real ``effective_date``; the same page's "what
   is a TFSA" paragraph is ``conceptual`` and evergreen. Collapsing these
@@ -15,9 +15,9 @@
 
 A Chunk inherits `source_authority` / `tier` / `jurisdiction` / `url`
 from its parent Page rather than re-deriving them — those are page-level
-facts, not per-chunk judgment calls. `topic_tags` starts as the page's
-`default_topic_tags` and gets refined per chunk once real chunking
-exists; this file draws the boundary, not the chunker itself.
+facts, not per-chunk judgment calls. `facets` starts as the page's
+`default_facets` and gets refined per chunk once real chunking exists;
+this file draws the boundary, not the chunker itself.
 
 Controlled vocabularies live here too, and are meant to be enforced
 (via ``validate_*``) rather than just documented in a comment — the
@@ -55,22 +55,78 @@ JURISDICTIONS = {"federal", "national", "on", "qc", "bc", "none"}
 # enforcement; conceptual chunks can be more lenient.
 CONTENT_TYPES = {"conceptual", "numeric_fact", "procedural", "example"}
 
-# Every source/chunk must carry >=1 account-type tag (enables a
-# programmatic account_type x subtopic coverage matrix instead of
-# eyeballing sources.py) plus any number of subtopic tags.
-ACCOUNT_TYPE_TAGS = {"tfsa", "rrsp", "fhsa", "resp", "general_investing", "regulatory"}
-SUBTOPIC_TAGS = {
-    "eligibility", "contribution_room", "over_contribution_penalty",
-    "withdrawals", "transfers", "taxation", "death_and_estates",
-    "divorce_separation", "non_resident", "fraud_protection",
-    "dealer_regulation", "complaints", "diversification",
-    "macro_context", "practical_howto",
+# --- Facets -------------------------------------------------------------------
+#
+# Five dimensions, not one flat tag bag — a chunk about "withdrawing from
+# a TFSA" and a chunk about "the dividend tax credit on non-registered
+# investments" have nothing in common except both being investing
+# content; forcing them into the same tag vocabulary loses the ability
+# to filter/facet cleanly (e.g. "show me every numeric_fact chunk about
+# RRSP + withdrawing + non_resident"). This also turns "do we have
+# coverage?" into a checkable account_type x action matrix instead of an
+# eyeballed source list — see data/README.md's coverage-gap findings.
+#
+# account_type is exhaustive by construction (Canada has exactly these
+# registered-account types) and finalized here — it shouldn't need to
+# change. The other four are bounded but curated; extend deliberately,
+# not by convention drift.
+
+ACCOUNT_TYPES = {
+    "tfsa", "rrsp", "rrif", "fhsa", "resp", "rdsp", "lira_lrsp",
+    "non_registered", "none",
 }
-TOPIC_TAGS_VOCAB = ACCOUNT_TYPE_TAGS | SUBTOPIC_TAGS
+
+TAX_CONCEPTS = {
+    "capital_gains", "capital_losses", "superficial_loss", "attribution_rules",
+    "contribution_room", "over_contribution_penalty", "withholding_tax",
+    "tax_deduction", "tax_credit", "dividend_tax_credit", "oas_clawback",
+}
+
+INVESTMENT_VEHICLES = {
+    "stocks", "etfs", "mutual_funds", "bonds", "gics", "reits", "options", "crypto",
+}
+
+ACTIONS = {
+    "contributing", "withdrawing", "transferring", "opening_account",
+    "filing_taxes", "calculating_room",
+}
+
+# Added on top of the original four facets: this project's whole reason
+# for existing is that residency/life-event status changes the answer,
+# so that can't be left as just another entry buried in a generic tag
+# set — it needs to be filterable on its own.
+SPECIAL_SITUATIONS = {"death_and_estates", "divorce_separation", "non_resident"}
+
+
+@dataclass(frozen=True)
+class Facets:
+    account_type: str  # required, single-valued — see ACCOUNT_TYPES; "none" for content that isn't about a specific account
+    tax_concepts: tuple[str, ...] = ()
+    investment_vehicles: tuple[str, ...] = ()
+    actions: tuple[str, ...] = ()
+    special_situations: tuple[str, ...] = ()
+
+    def to_json(self) -> dict:
+        return asdict(self)
+
+
+def validate_facets(facets: Facets) -> None:
+    if facets.account_type not in ACCOUNT_TYPES:
+        raise ValueError(f"account_type {facets.account_type!r} not in {sorted(ACCOUNT_TYPES)}")
+    _check_subset(facets.tax_concepts, TAX_CONCEPTS, "tax_concepts")
+    _check_subset(facets.investment_vehicles, INVESTMENT_VEHICLES, "investment_vehicles")
+    _check_subset(facets.actions, ACTIONS, "actions")
+    _check_subset(facets.special_situations, SPECIAL_SITUATIONS, "special_situations")
+
+
+def _check_subset(values: tuple[str, ...], vocab: set[str], field_name: str) -> None:
+    unknown = set(values) - vocab
+    if unknown:
+        raise ValueError(f"{field_name} {sorted(unknown)} not in {sorted(vocab)}")
 
 
 def validate_source_fields(*, source_authority: str, jurisdiction: str,
-                            tier: str, topic_tags: list[str]) -> None:
+                            tier: str, facets: Facets) -> None:
     """Fail loudly on registration mistakes rather than silently ingesting them."""
     if source_authority not in SOURCE_AUTHORITIES:
         raise ValueError(
@@ -81,21 +137,13 @@ def validate_source_fields(*, source_authority: str, jurisdiction: str,
         raise ValueError(f"jurisdiction {jurisdiction!r} not in {sorted(JURISDICTIONS)}")
     if tier not in {"primary", "secondary"}:
         raise ValueError(f"tier must be 'primary' or 'secondary', got {tier!r}")
-    unknown = set(topic_tags) - TOPIC_TAGS_VOCAB
-    if unknown:
-        raise ValueError(f"topic_tags {sorted(unknown)} not in TOPIC_TAGS_VOCAB")
-    if not (set(topic_tags) & ACCOUNT_TYPE_TAGS):
-        raise ValueError(f"topic_tags {topic_tags} must include >=1 of {sorted(ACCOUNT_TYPE_TAGS)}")
+    validate_facets(facets)
 
 
-def validate_chunk_fields(*, content_type: str, topic_tags: list[str]) -> None:
+def validate_chunk_fields(*, content_type: str, facets: Facets) -> None:
     if content_type not in CONTENT_TYPES:
         raise ValueError(f"content_type {content_type!r} not in {sorted(CONTENT_TYPES)}")
-    unknown = set(topic_tags) - TOPIC_TAGS_VOCAB
-    if unknown:
-        raise ValueError(f"topic_tags {sorted(unknown)} not in TOPIC_TAGS_VOCAB")
-    if not (set(topic_tags) & ACCOUNT_TYPE_TAGS):
-        raise ValueError(f"topic_tags {topic_tags} must include >=1 of {sorted(ACCOUNT_TYPE_TAGS)}")
+    validate_facets(facets)
 
 
 # --- Page layer ---------------------------------------------------------------
@@ -112,7 +160,7 @@ class FetchedPage:
     fetch_method: str  # "browser" | "http"
     license: str
     topic: str  # human-readable description, for reading sources.py
-    default_topic_tags: list[str]  # inherited by this page's chunks unless overridden; see TOPIC_TAGS_VOCAB
+    default_facets: Facets  # inherited by this page's chunks unless overridden
     fetched_at: str  # ISO 8601 UTC timestamp of this fetch run
     page_issued: Optional[str]  # best-effort original-publish date (dcterms.issued); None if not found
     page_last_updated: Optional[str]  # best-effort last-modified date (dcterms.modified); None if not found
@@ -124,7 +172,9 @@ class FetchedPage:
     error: Optional[str] = None  # set if the fetch failed; other fields best-effort in that case
 
     def to_json(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d["default_facets"] = self.default_facets.to_json()
+        return d
 
 
 # --- Chunk layer (draft — ingestion/pipeline.py doesn't exist yet) ------------
@@ -140,10 +190,12 @@ class Chunk:
     tier: str  # carried down from the page
     jurisdiction: str  # carried down from the page; override only if a chunk genuinely covers a different jurisdiction than its page's default
     content_type: str  # "conceptual" | "numeric_fact" | "procedural" | "example"
-    topic_tags: list[str]  # starts as the page's default_topic_tags, refined per chunk
+    facets: Facets  # starts as the page's default_facets, refined per chunk
     text: str
     effective_date: Optional[str] = None  # when this fact became true; None for evergreen/conceptual chunks
     review_date: Optional[str] = None  # when we last confirmed this chunk is still accurate; None until a verification pass runs
 
     def to_json(self) -> dict:
-        return asdict(self)
+        d = asdict(self)
+        d["facets"] = self.facets.to_json()
+        return d
