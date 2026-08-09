@@ -19,8 +19,14 @@ cp .env.example .env
 
 ## 2. Fetch the dataset
 
+Two fetch paths are needed — see [data/README.md](../data/README.md)
+for the full source list and why:
+
 ```bash
-python ingestion/fetch.py   # TODO: implement — pulls canada.ca / CRA / FCAC pages
+python ingestion/fetch.py   # TODO: implement
+# - headless-browser path (Playwright) for CRA, CIRO, AMF (bot-protected)
+# - plain HTTP path for OSC/GetSmarterAboutMoney, Bank of Canada,
+#   open.canada.ca, FP Canada, MoneySense, RBC, TD, Questrade
 ```
 
 ## 3. Run the ingestion pipeline (dlt)
