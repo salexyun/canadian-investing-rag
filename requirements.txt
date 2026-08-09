@@ -1,0 +1,22 @@
+# Pin exact versions once finalized (reproducibility criterion).
+# Placeholder groupings for now:
+
+# ingestion
+dlt
+
+# retrieval / knowledge base
+# qdrant-client
+# rank-bm25          # or reuse course's minsearch
+
+# LLM
+# openai
+
+# eval
+# pandas
+# scikit-learn
+
+# interface
+streamlit
+
+# monitoring
+# psycopg2-binary
