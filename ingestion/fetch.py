@@ -99,25 +99,31 @@ def extract_title(html: str) -> str | None:
 _DATE_RE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 
 
-def _extract_date(html: str, *, meta_name: str, time_property: str) -> str | None:
-    """Best-effort extraction of a page's self-reported date.
+def extract_last_updated(html: str) -> str | None:
+    """Best-effort extraction of a page's self-reported last-modified date.
 
-    Government of Canada pages (canada.ca — CRA included) expose both
-    issued and modified dates via standard <meta name="dcterms.*">
-    tags, far more reliable than scraping the "Page details" footer
-    widget. Other sites vary; we fall back to a matching <time
-    property="..."> tag, then any <time datetime="...">, then give up
-    rather than guess.
+    Government of Canada pages (canada.ca — CRA included) expose this
+    via a standard <meta name="dcterms.modified"> tag, far more
+    reliable than scraping the "Page details" footer widget. Other
+    sites vary; we fall back to <time property="dateModified">, then
+    any <time datetime="...">, then give up rather than guess.
+
+    (dcterms.issued — original publish date — was considered and
+    dropped: it doesn't drive any retrieval, trust, or freshness
+    behaviour. What matters is whether the page changed (content_hash,
+    page_last_updated) and when a specific fact took effect
+    (Chunk.effective_date) — "when was this URL first created" answers
+    neither question.)
     """
     soup = BeautifulSoup(html, "lxml")
 
-    meta_tag = soup.find("meta", attrs={"name": meta_name})
+    meta_tag = soup.find("meta", attrs={"name": "dcterms.modified"})
     if meta_tag and meta_tag.get("content"):
         m = _DATE_RE.search(meta_tag["content"])
         if m:
             return m.group(0)
 
-    time_tag = soup.find("time", attrs={"property": time_property})
+    time_tag = soup.find("time", attrs={"property": "dateModified"})
     if time_tag and time_tag.get("datetime"):
         m = _DATE_RE.search(time_tag["datetime"])
         if m:
@@ -131,14 +137,6 @@ def _extract_date(html: str, *, meta_name: str, time_property: str) -> str | Non
             return m.group(0)
 
     return None
-
-
-def extract_last_updated(html: str) -> str | None:
-    return _extract_date(html, meta_name="dcterms.modified", time_property="dateModified")
-
-
-def extract_issued(html: str) -> str | None:
-    return _extract_date(html, meta_name="dcterms.issued", time_property="datePublished")
 
 
 def fetch_one(source: Source, browser) -> FetchedPage:
@@ -160,7 +158,7 @@ def fetch_one(source: Source, browser) -> FetchedPage:
     if html is None:
         return FetchedPage(
             **common,
-            page_issued=None, page_last_updated=None, content_hash=None,
+            page_last_updated=None, content_hash=None,
             http_status=status, title=None, raw_html_path=None, content_length=0,
             error=error,
         )
@@ -172,7 +170,6 @@ def fetch_one(source: Source, browser) -> FetchedPage:
 
     return FetchedPage(
         **common,
-        page_issued=extract_issued(html),
         page_last_updated=extract_last_updated(html),
         content_hash=hashlib.sha256(html.encode("utf-8")).hexdigest(),
         http_status=status, title=extract_title(html),

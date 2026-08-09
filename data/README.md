@@ -39,16 +39,32 @@ capture. A CRA TFSA page's contribution-limit sentence is a
 a TFSA" paragraph is `conceptual` and evergreen. Two different chunks,
 same page — so that metadata has to live on the chunk, not the page.
 
+Every field below earns its place by driving one of: retrieval
+filtering, trust/freshness behaviour in the prompt, or citation
+display. A sanity pass (below) removed one that didn't.
+
 **Page** (`FetchedPage`, written today by `ingestion/fetch.py` to
 `data/raw/manifest.jsonl`) — provenance and source-authority context:
 `id`, `url`, `source_name`, `source_authority` (normalized slug, e.g.
 `cra`), `jurisdiction` (`federal | national | on | qc | bc | none`),
 `tier` (`primary | secondary`), `fetch_method`, `license`, `topic`,
-`default_topic_tags`, `fetched_at`, `page_issued`, `page_last_updated`
-(both best-effort, from the page's own `dcterms.issued` /
-`dcterms.modified` metadata where present), `content_hash` (sha256 —
-lets a re-run detect "this page didn't actually change"), plus
-`http_status` / `title` / `raw_html_path` / `content_length` / `error`.
+`default_facets`, `fetched_at`, `page_last_updated` (best-effort, from
+the page's own `dcterms.modified` metadata where present),
+`content_hash` (sha256 — lets a re-run detect "this page didn't
+actually change"), plus `http_status` / `title` / `raw_html_path` /
+`content_length` / `error` (fetch-operational diagnostics — correctly
+*not* propagated to Chunk, since they don't mean anything at retrieval
+time).
+
+`source_name` / `tier` / `license` / `fetch_method` are looked up from
+a single registry (`SOURCE_AUTHORITY_INFO`, keyed by
+`source_authority`) rather than typed per page — verified that every
+page from a given authority always carries the same values, so
+hand-typing them per source was pure redundancy and a drift risk.
+`jurisdiction` is the one field with a registry *default* that a page
+can override, since it means "what this content applies to" and that
+can genuinely differ from the publisher's usual scope (see the
+osc_gsam fix below).
 
 **Chunk** (`Chunk`, drafted now, written once `ingestion/pipeline.py`
 exists) — one per retrievable unit, several per page. Inherits
@@ -101,7 +117,7 @@ oversight, since the facets exist to make the core registered-account
 fact content filterable, not to force-fit everything.
 
 Every source is validated against these vocabularies (plus
-`SOURCE_AUTHORITIES`, `JURISDICTIONS`, `CONTENT_TYPES`) at
+`SOURCE_AUTHORITY_INFO`, `JURISDICTIONS`, `CONTENT_TYPES`) at
 registration time via `validate_source_fields` / `validate_chunk_fields`
 — an unregistered authority, an invalid jurisdiction, or a typo'd facet
 value raises immediately rather than silently reaching the knowledge
@@ -113,6 +129,41 @@ coverage for `rdsp` and `lira_lrsp`, and `rrif` only appears folded
 into the RRSP page rather than as its own account type. Worth filling
 when we expand breadth.
 
+### Sanity-check pass (removed / fixed on review)
+
+Nothing here proved out to be needed on its own justification — each
+of these was checked against "does it improve retrieval, or does it
+make what's retrieved more useful," not kept by default:
+
+- **Dropped `page_issued`.** It answered "when was this URL first
+  published," which drives no retrieval, trust, or freshness decision
+  — that's `page_last_updated`/`content_hash` (page changed?) and
+  `Chunk.effective_date` (when did *this fact* become true?), which
+  page-creation-date duplicates neither of.
+- **Fixed `jurisdiction` conflating publisher with applicability.**
+  OSC/GetSmarterAboutMoney was tagged `on` because OSC is Ontario's
+  regulator — but the actual content (investing basics, diversification)
+  isn't Ontario-specific. Left as `on`, a jurisdiction filter could
+  wrongly exclude it for a BC/Quebec user. Now defaults to `none`
+  (applies nationally) via the registry.
+- **Collapsed real redundancy into one registry.** Checked whether
+  `source_name`/`tier`/`license`/`fetch_method` ever varied within a
+  `source_authority` across the fetched manifest — they didn't, in any
+  of the 15 pages. Hand-typing four fixed-per-publisher values on every
+  `Source(...)` call was drift risk with no benefit, so
+  `SOURCE_AUTHORITY_INFO` + `make_source()` now derive them from one
+  place. (The similar-looking duplication *within* `Chunk` — carrying
+  `url`/`source_authority`/`tier`/`jurisdiction` on every chunk — was
+  kept: that's denormalization for query-time performance, a chunk
+  needs to be self-contained at retrieval time, which is a different
+  justification than "typed the same string 15 times by hand.")
+- **Kept, after consideration:** `topic` (free text) overlaps somewhat
+  with the structured facets, but serves a different audience — a
+  human skimming `sources.py` — and costs one string field, so it
+  stayed. `content_length`/`http_status` are diagnostic-only, not
+  retrieval-relevant, but near-zero cost and useful for debugging a
+  failed fetch, so they stayed too.
+
 ## Primary sources (government official / government-endorsed)
 
 | Source | URL | Topic | License | Fetch method |
@@ -123,7 +174,7 @@ when we expand breadth.
 | CRA (canada.ca) | [RESP](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps.html) | RESP, CESG, CLB grants | OGL-Canada | Headless browser |
 | CRA (canada.ca) | [Investment income](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/investment-income.html) | Capital gains / dividend taxation basics | OGL-Canada | Headless browser |
 | CRA (canada.ca) | [Income Tax Folio S3-F2-C2](https://www.canada.ca/en/revenue-agency/services/tax/technical-information/income-tax/income-tax-folios-index/series-3-property-investments-savings-plans/series-3-property-investments-savings-plan-folio-2-dividends/income-tax-folio-s3-f2-c2-taxable-dividends-corporations-resident-canada.html) | Technical dividend taxation (dense — good for depth) | OGL-Canada | Headless browser |
-| OSC (Crown agency of Ontario) | [GetSmarterAboutMoney.ca](https://www.getsmarteraboutmoney.ca/) + [Investing Academy](https://academy.getsmarteraboutmoney.ca/) | Structured investing/personal-finance lessons | OSC content | ✅ Direct HTTP — fetches clean |
+| OSC (Crown agency of Ontario) | [GetSmarterAboutMoney.ca](https://www.getsmarteraboutmoney.ca/) + [Investing Academy](https://academy.getsmarteraboutmoney.ca/) | Structured investing/personal-finance lessons | OSC content | ✅ Direct HTTP — fetches clean (`jurisdiction=none`: general education, not Ontario-specific — see schema notes) |
 | CIRO (national SRO, recognized by the CSA) | [Office of the Investor](https://www.ciro.ca/office-investor) | Dealer regulation, investor protection, complaints, fraud | CIRO content | Headless browser (Cloudflare JS challenge blocks plain HTTP) |
 | AMF (Government of Quebec) | [General public](https://lautorite.qc.ca/en/general-public) | Quebec-specific securities/insurance regulation | AMF content | Headless browser (WAF blocks plain HTTP) |
 | Bank of Canada (Crown corporation) | [Valet API](https://www.bankofcanada.ca/valet/docs) | Interest rates, FX, inflation — macro context | Bank of Canada terms of use | ✅ Direct HTTP — JSON API, no key required |
@@ -187,8 +238,8 @@ Two distinct dates now track this per chunk, and they answer different
 questions: `effective_date` is when a fact became true in the real
 world (e.g. the 2026 TFSA limit takes effect 2026-01-01, regardless of
 when CRA edited the page); `review_date` is when *we* last confirmed
-the chunk is still accurate. `page_last_updated`/`page_issued` (page
-level) and `content_hash` (page level) support this from the fetch
-side — a re-run that finds an unchanged hash needs no re-review; a
-changed hash on a page whose chunks include `numeric_fact` entries
-should trigger one before those chunks are trusted again.
+the chunk is still accurate. `page_last_updated` and `content_hash`
+(both page level) support this from the fetch side — a re-run that
+finds an unchanged hash needs no re-review; a changed hash on a page
+whose chunks include `numeric_fact` entries should trigger one before
+those chunks are trusted again.

@@ -33,21 +33,45 @@ from typing import Optional
 
 # --- Controlled vocabularies -------------------------------------------------
 
-# One slug per distinct publisher. Adding a new source means registering
-# it here on purpose — that friction is intentional, not an oversight.
-SOURCE_AUTHORITIES = {
-    "cra", "ciro", "amf", "boc", "osc_gsam",           # primary
-    "fpcanada", "moneysense", "rbc", "td", "questrade",  # secondary
+OGL = "Open Government Licence – Canada"
+
+# One entry per distinct publisher — the single source of truth for
+# source_name/tier/license/fetch_method/jurisdiction, all of which are
+# fixed properties of *who published this*, not of any individual page
+# (verified: every page from a given authority carries the same tier,
+# license, fetch method, and — see jurisdiction note below — the same
+# default jurisdiction). Registering a source here is deliberate
+# friction, not an oversight; sources.make_source() reads from this
+# rather than making callers retype these on every page.
+#
+# jurisdiction here is a *default*, not a fixed fact like the others —
+# it means "what this content applies to," not "who wrote it," and a
+# publisher's own pages can occasionally need a different jurisdiction
+# than their default (make_source() accepts an override for exactly
+# that). osc_gsam is the concrete example: OSC is Ontario's regulator,
+# but GetSmarterAboutMoney's actual content (investing basics,
+# diversification) isn't Ontario-specific — tagging it "on" would risk
+# a jurisdiction filter wrongly excluding it for a BC or Quebec user,
+# so its default is "none" (applies nationally) rather than "on".
+#
+# "national" (CIRO) is kept distinct from "federal" (CRA, Bank of
+# Canada): CIRO is a self-regulatory body operating under provincial
+# securities-commission recognition, not a federal government
+# department — conflating the two would misrepresent how Canadian
+# securities regulation actually works.
+SOURCE_AUTHORITY_INFO: dict[str, dict] = {
+    "cra":        {"source_name": "CRA",                       "tier": "primary",   "fetch_method": "browser", "license": OGL,                  "jurisdiction": "federal"},
+    "ciro":       {"source_name": "CIRO",                      "tier": "primary",   "fetch_method": "browser", "license": "CIRO content",       "jurisdiction": "national"},
+    "amf":        {"source_name": "AMF",                       "tier": "primary",   "fetch_method": "browser", "license": "AMF content",        "jurisdiction": "qc"},
+    "boc":        {"source_name": "Bank of Canada",            "tier": "primary",   "fetch_method": "http",    "license": "Bank of Canada terms of use", "jurisdiction": "federal"},
+    "osc_gsam":   {"source_name": "OSC / GetSmarterAboutMoney", "tier": "primary",  "fetch_method": "http",    "license": "OSC content",        "jurisdiction": "none"},
+    "fpcanada":   {"source_name": "FP Canada",                 "tier": "secondary", "fetch_method": "http",    "license": "FP Canada content",  "jurisdiction": "none"},
+    "moneysense": {"source_name": "MoneySense",                "tier": "secondary", "fetch_method": "http",    "license": "MoneySense content", "jurisdiction": "none"},
+    "rbc":        {"source_name": "RBC",                       "tier": "secondary", "fetch_method": "http",    "license": "RBC content",        "jurisdiction": "none"},
+    "td":         {"source_name": "TD",                        "tier": "secondary", "fetch_method": "http",    "license": "TD content",         "jurisdiction": "none"},
+    "questrade":  {"source_name": "Questrade",                 "tier": "secondary", "fetch_method": "http",    "license": "Questrade content",  "jurisdiction": "none"},
 }
 
-# Whose legal/regulatory authority this content speaks under — distinct
-# from *tier*, which is about how authoritative we treat it, not who
-# issued it. "national" (CIRO) is kept separate from "federal" (CRA,
-# Bank of Canada) on purpose: CIRO is a self-regulatory body operating
-# under provincial securities-commission recognition, not a federal
-# government department — conflating the two would misrepresent how
-# Canadian securities regulation actually works, which is precisely the
-# kind of inaccuracy this schema exists to prevent.
 JURISDICTIONS = {"federal", "national", "on", "qc", "bc", "none"}
 
 # Chunk-level only. Drives citation/trust behaviour in the prompt —
@@ -128,10 +152,10 @@ def _check_subset(values: tuple[str, ...], vocab: set[str], field_name: str) -> 
 def validate_source_fields(*, source_authority: str, jurisdiction: str,
                             tier: str, facets: Facets) -> None:
     """Fail loudly on registration mistakes rather than silently ingesting them."""
-    if source_authority not in SOURCE_AUTHORITIES:
+    if source_authority not in SOURCE_AUTHORITY_INFO:
         raise ValueError(
             f"Unregistered source_authority {source_authority!r} — add it to "
-            f"SOURCE_AUTHORITIES in ingestion/schema.py first."
+            f"SOURCE_AUTHORITY_INFO in ingestion/schema.py first."
         )
     if jurisdiction not in JURISDICTIONS:
         raise ValueError(f"jurisdiction {jurisdiction!r} not in {sorted(JURISDICTIONS)}")
@@ -162,7 +186,6 @@ class FetchedPage:
     topic: str  # human-readable description, for reading sources.py
     default_facets: Facets  # inherited by this page's chunks unless overridden
     fetched_at: str  # ISO 8601 UTC timestamp of this fetch run
-    page_issued: Optional[str]  # best-effort original-publish date (dcterms.issued); None if not found
     page_last_updated: Optional[str]  # best-effort last-modified date (dcterms.modified); None if not found
     content_hash: Optional[str]  # sha256 of the raw HTML — lets a re-run detect "this page didn't change"
     http_status: Optional[int]
