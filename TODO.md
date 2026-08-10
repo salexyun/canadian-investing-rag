@@ -20,13 +20,14 @@ tool while a session is active.
 - [x] Build retrieval evaluation question set — 112 questions from 56 stratified-sampled chunks, jargon-exact + newcomer-plain-language pairs, `gpt-5.6-luna`, $0.03 (`eval/build_ground_truth.py`)
 - [x] Drop `.env.example` — vars now documented inline in `docs/setup.md`
 - [x] Evaluate retrieval approaches — BM25 vs vector vs hybrid (RRF) against the 112-question set (`eval/evaluate_retrieval.py`) *(rubric: Retrieval evaluation)*. Hybrid won overall (hit_rate=0.714/mrr=0.581) but had a nuance: on the plain-language slice it tied vector's hit-rate with slightly *lower* MRR (0.362 vs 0.374) — fusing in a weak bm25 signal dragged down top-1 ranking there. Not the final answer — see reranking below, which fixed this.
-- [x] Add cross-encoder reranking (`BAAI/bge-reranker-base`, `rag/reranker.py`) *(rubric best-practices bonus)* — tested on top of both vector and hybrid candidates specifically to target the plain-language MRR gap just found, not added reflexively. **Winner: hybrid_rerank**, now best on *every* slice tested, no caveats left: overall hit_rate=0.768/mrr=0.659, jargon 0.964/0.858, plain_language 0.571/0.461 (up from 0.482/0.362 — now clearly beats vector-only's 0.374, resolving the earlier oddity), numeric_fact 0.741/0.672. **This is the retrieval approach the RAG flow will use.**
+- [x] Add cross-encoder reranking (`BAAI/bge-reranker-base`, `rag/reranker.py`) *(rubric best-practices bonus)* — tested on top of both vector and hybrid candidates specifically to target the plain-language MRR gap just found, not added reflexively. Winner at that point: hybrid_rerank, best on every slice tested — overall hit_rate=0.768/mrr=0.659, jargon 0.964/0.858, plain_language 0.571/0.461, numeric_fact 0.741/0.672. Superseded by query rewriting below.
+- [x] Extract retrieval into shared `rag/` modules (`vector_search.py`, `hybrid_search.py`, `retriever.py`) — the production RAG flow and the eval script now use the literal same retrieval code, not two implementations that could drift. Verified: re-ran the eval after refactoring, byte-for-byte identical numbers.
+- [x] Add query rewriting (`gpt-5.6-luna`, `rag/query_rewrite.py`) *(rubric best-practices bonus)* — tested against the ground-truth set, not assumed. **Biggest single jump in the whole retrieval investigation**: new winner `hybrid_rerank_rewrite`, overall hit_rate=0.875/mrr=0.729. Plain-language slice (the gap chased since the first retrieval eval): hit_rate 0.571→**0.804**, mrr 0.461→**0.651**. numeric_fact: 0.741→0.897 / 0.672→0.805. One honest tradeoff: jargon queries are slightly *worse* with rewriting (hit_rate 0.964→0.946, mrr 0.858→0.807) — rewriting an already-precise query adds a small chance of drift. Net gain heavily outweighs it. **This (query-rewrite → hybrid RRF → rerank) is the final retriever, `rag/retriever.py`.**
+- [x] Build the RAG class (`rag/rag.py`) *(rubric: Retrieval flow)* — composition-based (retriever injected), prompt construction is tier-aware (PRIMARY preferred, SECONDARY flagged explicitly) and content_type-aware (effective_date surfaced as "as of" when present). Verified with real questions, not just "it ran": both test answers correct, well-grounded, appropriately hedged, correctly distinguished CIPF/CIRO/CDIC's different roles, real working citation URLs. Model: `gpt-5.6-terra` as a placeholder — LLM evaluation (below) decides terra vs sol for real.
 
 ## Next
 
-- [ ] Set up Langfuse Cloud (free tier) + SDK integration — before the RAG flow is built, so tracing is in from day one
-- [ ] Build RAG prompt construction + LLM call, tier/content_type-aware (`rag/`) — composition-based (a RAG class taking a retriever), retriever = hybrid_rerank (the eval winner), Langfuse-instrumented *(rubric: Retrieval flow)*
-- [ ] Add query rewriting, `gpt-5.6-luna` *(rubric best-practices bonus)*
+- [ ] Set up Langfuse Cloud (free tier) + SDK integration — instrumenting the now-working RAG flow, not building blind
 - [ ] Evaluate >=2 LLM approaches for main RAG generation (`gpt-5.6-terra` vs `gpt-5.6-sol`) via Langfuse's LLM-as-judge (`gpt-5.6-terra` as judge) — pick the best *(rubric: LLM evaluation)*
 - [ ] Build the Streamlit interface, with citations + disclaimer (`app/`) *(rubric: Interface)*
 - [ ] Wire user feedback (thumbs up/down) to Langfuse's scores API + confirm/extend its dashboard to 5+ charts (`monitoring/`) *(rubric: Monitoring)*
@@ -55,7 +56,7 @@ tool while a session is active.
   OpenAI pricing directly against the API (`client.models.list()`), not
   an aggregator estimate — `gpt-5.6` (luna/terra/sol) is the current
   generation, one past the coursework's `gpt-5.4-mini`. Bulk/simple
-  tasks (ground-truth generation, planned query rewriting) use
+  tasks (ground-truth generation, query rewriting) use
   `gpt-5.6-luna` (cheapest current tier, $0.20/$1.20 per 1M tokens) —
   no reasoning depth needed for either. Main RAG generation and the
   LLM-judge deliberately *don't* have a model picked yet — task
@@ -73,3 +74,4 @@ tool while a session is active.
 
 - LIRA/LRSP has no clean primary (CRA) source — see [data/README.md](data/README.md#sources)
 - Bank of Canada (`boc`) registered but not integrated — its Valet API is JSON, a different shape than this HTML pipeline
+- Ingestion pipeline is fully automated but still plain Python scripts, not wrapped in a named orchestration tool (Kestra/dlt/Airflow/Prefect) — the rubric's own wording draws the 1-vs-2-point line at the tool, not the automation level, so this is genuinely ambiguous scoring risk, not just polish. Wrapping fetch+chunk+load as dlt resources would close it.
