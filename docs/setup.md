@@ -45,11 +45,22 @@ python ingestion/fetch.py --tier primary         # just the primary tier
 python ingestion/fetch.py --only cra_tfsa cra_fhsa   # just specific sources
 ```
 
-## 3. Run the ingestion pipeline (dlt)
+## 3. Chunk the fetched pages
+
+`ingestion/pipeline.py` reads `data/raw/manifest.jsonl`, chunks each
+page (heading-driven splitting, boilerplate stripping, `content_type`/
+`effective_date` tagging, exact-text dedup — see
+[data/README.md](../data/README.md#chunking) for the strategy and the
+real bugs it took to get there), and writes `data/processed/chunks.jsonl`.
 
 ```bash
-python ingestion/pipeline.py   # TODO: implement — chunk + load into the knowledge base
+python ingestion/pipeline.py                              # chunk everything
+python ingestion/pipeline.py --only cra_tfsa_what cra_tfsa_calculate_room   # just specific pages
 ```
+
+Loading these chunks into a vector store/knowledge base is a separate,
+not-yet-built step — `pipeline.py` currently stops at the processed
+JSONL file.
 
 ## 4. Start everything
 

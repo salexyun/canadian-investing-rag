@@ -280,6 +280,76 @@ deferred to a small separate integration rather than forced through
   nothing suitable for this niche. Confirms the corpus needs to be
   built from these sources directly.
 
+## Chunking
+
+`ingestion/pipeline.py` reads `data/raw/manifest.jsonl`, chunks each
+page's raw HTML, and writes `data/processed/chunks.jsonl` — one
+`Chunk` record per line (see Schema above). Strategy and the concrete
+bugs it took to get here:
+
+- **Heading-driven splitting, not fixed-size windows** — split at
+  h1/h2 boundaries, sub-splitting long sections (~1200 char target,
+  sentence-boundary overlap) rather than cutting an arbitrary window
+  through a document. This is why it mattered: a fixed-size window
+  could easily cut "$7,000... January 1, 2026" in half.
+- **Government-template-aware boilerplate stripping** — CRA/ESDC pages
+  share the WET-BOEW template, so specific classes (`gc-most-requested`,
+  `gc-srvinfo`, `pagedetails`, `alert`) are stripped explicitly, backed
+  by a generic link-density heuristic (a block that's mostly `<a>` text
+  with 2+ links is navigation, not content) for non-government
+  templates. A cookie-consent/language-selector pattern was added after
+  it leaked through on CIPF (different template than the government
+  pages the explicit classes target).
+- **No artificial minimum chunk size** — several genuine leaf pages are
+  a single complete sentence (e.g. the spousal-RRSP-at-71 rule); that's
+  a precise, good chunk, not something to force-merge. A separate
+  40-char floor exists only to catch boilerplate that slipped through
+  stripping (breadcrumbs, attribution lines), not to enforce a target
+  length — confirmed by checking that every genuine short-but-complete
+  chunk found during review was 138+ chars, well clear of that floor.
+- **`content_type` decided once per section, not per sub-chunk
+  fragment** — found the hard way: CRA pages frequently embed a worked
+  example (marked `Example:`, not prose "for example") inside an
+  otherwise conceptual/procedural section. Classifying each sub-split
+  fragment independently meant only the piece containing the literal
+  marker got tagged `example`; continuation pieces of the *same*
+  example fell through to `numeric_fact` — and then had years pulled
+  from the example's narrative ("Moira... in 2023... in 2025") extracted
+  as if they were the current rule's real `effective_date`. Fixed by
+  classifying the whole section once and applying it to every
+  sub-chunk; `effective_date` extraction is scoped to a window around
+  actual limit-language ("dollar limit", "deduction limit"), not any
+  date near any dollar amount.
+- **Structural bug, not a content bug, caused 25/93 pages to initially
+  produce zero chunks** — sibling-walking from each heading tag failed
+  silently on pages where CRA wraps each heading in its own
+  single-child container div, leaving the real content in a sibling
+  container one level up at an inconsistent nesting depth per page.
+  Confirmed via a page independently verified to have real content
+  (`cra_rrsp_turn71_spousal`) producing zero sections. Fixed by walking
+  the document in flattened order and assigning each content block to
+  the most recently seen heading, which is robust to nesting depth
+  where sibling relationships aren't.
+- **Exact-text deduplication** — CRA repeats a shared glossary block
+  (e.g. "Spouse. A person to whom you are legally married.") verbatim
+  across ~11 TFSA pages. Correct content, but indexing it 11 times
+  would bloat retrieval with near-duplicate hits for no benefit — found
+  to be 197 of 1250 chunks (~16%) before a dedup pass; final corpus
+  keeps the first occurrence only.
+- **Facets inherit from the page unmodified** — no per-chunk
+  refinement in v1, which is safe specifically because the corpus is
+  mostly narrow, single-topic leaf pages after the content-quality
+  audit; a page's `default_facets` are already precise at chunk
+  granularity.
+
+**Result**: 93 pages -> 1,052 chunks (991 primary / 61 secondary).
+Content type: 603 conceptual, 313 example, 74 procedural, 62
+numeric_fact. 15 chunks carry a confirmed `effective_date`. 5 pages
+produce zero chunks, all confirmed correct: 4 pure-hub CRA pages whose
+real content lives in leaf pages fetched separately (see Content-
+quality audit), plus `cipf_about`, whose only content turned out to be
+the cookie-consent banner once stripped.
+
 ## Fetchability summary
 
 Every primary *regulator* (CRA, CIRO, AMF) sits behind bot protection
