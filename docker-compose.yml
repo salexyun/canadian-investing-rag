@@ -1,8 +1,15 @@
 version: "3.9"
 
 # Skeleton — service definitions get filled in as each component is built.
-# Target end state: app + vector DB + Postgres (feedback log) + Grafana,
-# all runnable with a single `docker compose up`.
+# Target end state: app + vector DB, runnable with a single `docker compose up`.
+#
+# No self-hosted Postgres/Grafana here on purpose: monitoring/observability
+# is Langfuse Cloud (external, managed, free tier) — see TODO.md and
+# data/README.md for why. Self-hosting Langfuse's own stack would mean
+# 6 more services (Postgres + ClickHouse + Redis + MinIO + web + worker,
+# ~4 cores/16GB recommended) for a course-project traffic volume; the
+# same reasoning that lets us call OpenAI's API instead of self-hosting
+# an LLM applies here.
 
 services:
   app:
@@ -13,7 +20,6 @@ services:
       - .env
     depends_on:
       - vector-db
-      - postgres
     volumes:
       - ./data:/app/data
 
@@ -24,31 +30,5 @@ services:
     volumes:
       - qdrant_storage:/qdrant/storage
 
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-monitoring}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-  grafana:
-    image: grafana/grafana:latest
-    ports:
-      - "3000:3000"
-    environment:
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
-    volumes:
-      - grafana_data:/var/lib/grafana
-      - ./monitoring/dashboards:/etc/grafana/provisioning/dashboards
-      - ./monitoring/datasources:/etc/grafana/provisioning/datasources
-    depends_on:
-      - postgres
-
 volumes:
   qdrant_storage:
-  pgdata:
-  grafana_data:

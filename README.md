@@ -94,7 +94,7 @@ CRA / CIRO / AMF / ESDC / OSC / CIPF / CDIC + secondary sources
  prompt construction → LLM → answer with citations
         │
         ▼
- Streamlit UI ──── feedback (👍/👎) ──► Postgres ──► Grafana dashboard
+ Streamlit UI ──── feedback (👍/👎) + traces ──► Langfuse Cloud (dashboard, LLM-as-judge eval)
 ```
 
 See [docs/usage.md](docs/usage.md) for how to run each component.
@@ -109,7 +109,7 @@ Tracking against the LLM Zoomcamp project rubric:
 - [ ] LLM evaluation (multiple approaches compared)
 - [ ] Interface (Streamlit)
 - [ ] Ingestion pipeline (automated, dlt)
-- [ ] Monitoring (feedback + Grafana dashboard, 5+ charts)
+- [ ] Monitoring (feedback + Langfuse dashboard, 5+ charts)
 - [ ] Containerization (full docker-compose)
 - [ ] Reproducibility (pinned deps, clear docs)
 - [ ] Best practices: hybrid search
@@ -127,7 +127,7 @@ canadian-investing-rag/
 ├── rag/           # retrieval + prompt construction + LLM call
 ├── eval/          # retrieval eval and LLM eval scripts/notebooks
 ├── app/           # Streamlit UI
-├── monitoring/    # feedback logging + Grafana dashboard config
+├── monitoring/    # Langfuse feedback wiring + dashboard config
 ├── data/          # sample raw + processed docs
 └── docs/          # setup, usage, evaluation write-ups
 ```

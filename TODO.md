@@ -19,16 +19,35 @@ tool while a session is active.
 
 - [ ] Embed chunks and load into a vector store (Qdrant)
 - [ ] Set up a keyword/BM25 index for hybrid search
-- [ ] Build a retrieval evaluation question set (~50-100 Qs, all five pillars + residency angle)
-- [ ] Evaluate retrieval approaches (keyword vs vector vs hybrid, +reranking) — pick the best *(rubric: Retrieval evaluation)*
-- [ ] Build RAG prompt construction + LLM call, tier/content_type-aware (`rag/`) *(rubric: Retrieval flow)*
+- [ ] Set up Langfuse Cloud (free tier) + SDK integration — before the RAG flow is built, so tracing is in from day one
+- [ ] Build a retrieval evaluation question set (~50-100 Qs, all five pillars + residency angle) — per-chunk LLM ground-truth generation (Module 4 pattern), both jargon-exact and newcomer-plain-language phrasings
+- [ ] Evaluate retrieval approaches (keyword vs vector vs hybrid via RRF, +reranking) — pick the best *(rubric: Retrieval evaluation)*
+- [ ] Build RAG prompt construction + LLM call, tier/content_type-aware (`rag/`) — composition-based (a RAG class taking a retriever), Langfuse-instrumented *(rubric: Retrieval flow)*
 - [ ] Add query rewriting *(rubric best-practices bonus)*
-- [ ] Evaluate >=2 LLM prompt/model approaches — pick the best *(rubric: LLM evaluation)*
+- [ ] Evaluate >=2 LLM prompt/model approaches via Langfuse's LLM-as-judge evaluators — pick the best *(rubric: LLM evaluation)*
 - [ ] Build the Streamlit interface, with citations + disclaimer (`app/`) *(rubric: Interface)*
-- [ ] Build monitoring — feedback capture + Grafana dashboard, 5+ charts (`monitoring/`) *(rubric: Monitoring)*
-- [ ] Flesh out `docker-compose.yml` to run the whole system end-to-end *(rubric: Containerization)*
+- [ ] Wire user feedback (thumbs up/down) to Langfuse's scores API + confirm/extend its dashboard to 5+ charts (`monitoring/`) *(rubric: Monitoring)*
+- [ ] Flesh out `docker-compose.yml` to run end-to-end — app + Qdrant only; no self-hosted Postgres/Grafana, Langfuse Cloud is external *(rubric: Containerization)*
 - [ ] Write up `docs/evaluation.md` and `docs/usage.md` with real results/screenshots
 - [ ] (Optional) Cloud deployment *(rubric bonus)*
+
+## Decisions made along the way (and why)
+
+- **Monitoring/eval: Langfuse Cloud, not Grafana+Postgres (the course's approach) or self-hosted Langfuse.**
+  Self-hosted Langfuse is a 6-service stack (Postgres + ClickHouse + Redis +
+  MinIO + web + worker, ~4 cores/16GB recommended) — too heavy for this
+  project's traffic scale alongside Qdrant + our own app. Cloud free tier
+  gets the same SDK/tracing/eval/dashboard features without managing any
+  database ourselves — same reasoning as calling the OpenAI API instead of
+  self-hosting an LLM.
+- **Not Arize Phoenix** — also a strong fit (retrieval-eval templates,
+  embedding visualization), but chosen against in favour of learning
+  Langfuse specifically; a deliberate choice, not an oversight.
+- **`rag/`'s RAG class is composition-based** (a retriever passed into one
+  class), not the course's 3-level `RAGBase`/`RAGVector`/`RAGPgVector`
+  subclass hierarchy — we don't swap retrieval backends at runtime in
+  production, just compare 3 approaches once and pick a winner; less
+  structure is genuinely enough here.
 
 ## Also tracked as gaps, not forgotten
 

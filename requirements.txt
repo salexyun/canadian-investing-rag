@@ -7,22 +7,21 @@ lxml==6.1.1
 playwright==1.62.0
 # after `pip install -r requirements.txt`, also run: playwright install chromium
 
-# ingestion — chunk + load step (ingestion/pipeline.py, not yet implemented)
-# dlt
+# ingestion — chunk + load step (ingestion/pipeline.py)
+# dlt              # wrapping fetch+chunk as dlt resources, for ingestion-pipeline rubric credit
 
 # retrieval / knowledge base
 # qdrant-client
-# rank-bm25          # or reuse course's minsearch
+# rank-bm25          # BM25, kept as a distinct comparable method alongside vector + hybrid
 
 # LLM
 # openai
 
 # eval
 # pandas
-# scikit-learn
 
 # interface
 streamlit
 
-# monitoring
-# psycopg2-binary
+# monitoring / observability / eval — Langfuse Cloud (free tier), not self-hosted
+# langfuse
