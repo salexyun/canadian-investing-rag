@@ -30,6 +30,7 @@ REPO_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO_ROOT.parent / "rag"))
 
 from bm25_search import BM25Search  # noqa: E402
+from reranker import rerank  # noqa: E402
 
 GROUND_TRUTH_PATH = Path(__file__).resolve().parent / "retrieval_ground_truth.jsonl"
 RESULTS_PATH = Path(__file__).resolve().parent / "retrieval_eval_results.json"
@@ -41,6 +42,7 @@ QDRANT_URL = "http://localhost:6333"
 
 TOP_K_FINAL = 5  # results actually evaluated for hit-rate/MRR
 TOP_K_CANDIDATES = 10  # candidates each method contributes to RRF fusion
+TOP_K_RERANK_CANDIDATES = 20  # candidates handed to the cross-encoder before trimming to TOP_K_FINAL
 RRF_K = 60  # same constant the coursework used
 
 
@@ -79,6 +81,14 @@ class Retrievers:
         ranked = sorted(scores, key=scores.get, reverse=True)
         return [docs[key] for key in ranked[:top_k]]
 
+    def vector_rerank_search(self, query: str, top_k: int) -> list[dict]:
+        candidates = self.vector_search(query, TOP_K_RERANK_CANDIDATES)
+        return rerank(query, candidates, top_k)
+
+    def hybrid_rerank_search(self, query: str, top_k: int) -> list[dict]:
+        candidates = self.hybrid_search(query, TOP_K_RERANK_CANDIDATES)
+        return rerank(query, candidates, top_k)
+
 
 def compute_relevance(question: dict, search_fn) -> list[int]:
     results = search_fn(question["question"], TOP_K_FINAL)
@@ -113,6 +123,8 @@ def main() -> int:
         "bm25": retrievers.bm25_search,
         "vector": retrievers.vector_search,
         "hybrid": retrievers.hybrid_search,
+        "vector_rerank": retrievers.vector_rerank_search,
+        "hybrid_rerank": retrievers.hybrid_rerank_search,
     }
 
     results: dict[str, dict] = {}
