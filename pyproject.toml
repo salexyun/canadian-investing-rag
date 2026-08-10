@@ -1,0 +1,16 @@
+[project]
+name = "canadian-investing-rag"
+version = "0.1.0"
+description = "RAG assistant for investing in Canada — accounts, instruments, taxation, regulation, and residency-specific rules."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.34.2",
+    "beautifulsoup4>=4.15.0",
+    "lxml>=6.1.1",
+    "playwright>=1.62.0",
+    "streamlit>=1.59.2",
+]
+
+[dependency-groups]
+dev = []

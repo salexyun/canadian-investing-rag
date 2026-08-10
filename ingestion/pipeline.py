@@ -318,17 +318,36 @@ def main() -> int:
         print(f"No manifest at {MANIFEST_PATH} — run fetch.py first.", file=sys.stderr)
         return 1
 
-    pages = [json.loads(line) for line in MANIFEST_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
-    if args.only:
-        pages = [p for p in pages if p["id"] in args.only]
+    all_pages = [json.loads(line) for line in MANIFEST_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+    pages = [p for p in all_pages if p["id"] in args.only] if args.only else all_pages
 
-    all_chunks: list[Chunk] = []
+    new_chunks: list[Chunk] = []
     skipped = []
     for page in pages:
         chunks = chunk_page(page)
         if not chunks:
             skipped.append(page["id"])
-        all_chunks.extend(chunks)
+        new_chunks.extend(chunks)
+
+    if args.only:
+        # Merge into existing chunks.jsonl rather than overwriting it with
+        # only the filtered pages' output — mirrors fetch.py's --only
+        # behaviour. (Bug found the hard way: an earlier version of this
+        # script didn't merge, and a --only sanity-check run silently
+        # replaced the full 1052-chunk corpus with 15 chunks from one page.)
+        by_page: dict[str, list[dict]] = {}
+        if CHUNKS_PATH.exists():
+            for line in CHUNKS_PATH.read_text(encoding="utf-8").splitlines():
+                if line.strip():
+                    rec = json.loads(line)
+                    by_page.setdefault(rec["page_id"], []).append(rec)
+        for pid in args.only:
+            by_page[pid] = [c.to_json() for c in new_chunks if c.page_id == pid]
+        all_chunks_json = [rec for recs in by_page.values() for rec in recs]
+    else:
+        all_chunks_json = [c.to_json() for c in new_chunks]
+
+    all_chunks = all_chunks_json
 
     # Exact-text dedup: CRA repeats a shared glossary block (e.g. "Spouse. A
     # person to whom you are legally married.") verbatim across ~11 TFSA
@@ -337,20 +356,20 @@ def main() -> int:
     # first occurrence only; found on the full 93-page run to be ~16% of
     # all chunks (197 of 1250) before this pass.
     seen_text: set[str] = set()
-    deduped: list[Chunk] = []
+    deduped: list[dict] = []
     n_dupes = 0
     for c in all_chunks:
-        if c.text in seen_text:
+        if c["text"] in seen_text:
             n_dupes += 1
             continue
-        seen_text.add(c.text)
+        seen_text.add(c["text"])
         deduped.append(c)
     all_chunks = deduped
 
     DATA_PROCESSED.mkdir(parents=True, exist_ok=True)
     with CHUNKS_PATH.open("w", encoding="utf-8") as f:
         for c in all_chunks:
-            f.write(json.dumps(c.to_json(), ensure_ascii=False) + "\n")
+            f.write(json.dumps(c, ensure_ascii=False) + "\n")
 
     print(f"{len(pages)} pages -> {len(all_chunks)} chunks ({n_dupes} exact-duplicate chunks dropped, {len(skipped)} pages produced 0 chunks)")
     if skipped:
