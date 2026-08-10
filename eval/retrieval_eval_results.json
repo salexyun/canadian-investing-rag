@@ -109,7 +109,29 @@
         "mrr": 0.6724137931034483,
         "n": 58
       }
+    },
+    "hybrid_rerank_rewrite": {
+      "overall": {
+        "hit_rate": 0.875,
+        "mrr": 0.728720238095238,
+        "n": 112
+      },
+      "jargon": {
+        "hit_rate": 0.9464285714285714,
+        "mrr": 0.806547619047619,
+        "n": 56
+      },
+      "plain_language": {
+        "hit_rate": 0.8035714285714286,
+        "mrr": 0.6508928571428572,
+        "n": 56
+      },
+      "numeric_fact": {
+        "hit_rate": 0.896551724137931,
+        "mrr": 0.8045977011494254,
+        "n": 58
+      }
     }
   },
-  "winner": "hybrid_rerank"
+  "winner": "hybrid_rerank_rewrite"
 }

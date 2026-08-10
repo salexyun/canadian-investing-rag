@@ -1,17 +1,17 @@
-"""Evaluate retrieval approaches: BM25 vs vector vs hybrid (RRF).
+"""Evaluate retrieval approaches: BM25 vs vector vs hybrid (RRF) vs reranked variants.
 
 Runs the 112-question ground-truth set (eval/retrieval_ground_truth.jsonl)
-against all three methods and reports hit-rate/MRR — the exact metrics
+against all five methods and reports hit-rate/MRR — the exact metrics
 and formulas the coursework's Module 4 uses — both overall and split by
 `phrasing_style` (jargon vs plain_language), since the whole reason for
-building three separate methods instead of just picking one was the
-hypothesis that BM25 and vector search fail on different query styles.
-An aggregate score would hide exactly the effect this is supposed to
-measure.
+building multiple methods instead of just picking one was the hypothesis
+that BM25 and vector search fail on different query styles. An aggregate
+score would hide exactly the effect this is supposed to measure.
 
-Hybrid uses Reciprocal Rank Fusion, same technique and formula as the
-coursework's Module 2 homework (Q6):
-    score[doc] += 1 / (k + rank)   for each result list the doc appears in
+Uses the same rag/ retrieval modules the production RAG flow uses
+(bm25_search, vector_search, hybrid_search, reranker) rather than a
+second implementation — the eval numbers need to describe the code
+that's actually deployed, not a reimplementation that could drift.
 
 Usage:
     python eval/evaluate_retrieval.py
@@ -23,71 +23,86 @@ import json
 import sys
 from pathlib import Path
 
-from qdrant_client import QdrantClient
-from sentence_transformers import SentenceTransformer
-
 REPO_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(REPO_ROOT.parent / "rag"))
 
 from bm25_search import BM25Search  # noqa: E402
+from hybrid_search import HybridSearch  # noqa: E402
+from query_rewrite import rewrite_query  # noqa: E402
 from reranker import rerank  # noqa: E402
+from vector_search import VectorSearch  # noqa: E402
+from dotenv import load_dotenv  # noqa: E402
+from openai import OpenAI  # noqa: E402
+
+load_dotenv()
 
 GROUND_TRUTH_PATH = Path(__file__).resolve().parent / "retrieval_ground_truth.jsonl"
 RESULTS_PATH = Path(__file__).resolve().parent / "retrieval_eval_results.json"
 
-EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
-QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
-COLLECTION_NAME = "canadian_investing_chunks"
-QDRANT_URL = "http://localhost:6333"
-
 TOP_K_FINAL = 5  # results actually evaluated for hit-rate/MRR
-TOP_K_CANDIDATES = 10  # candidates each method contributes to RRF fusion
 TOP_K_RERANK_CANDIDATES = 20  # candidates handed to the cross-encoder before trimming to TOP_K_FINAL
-RRF_K = 60  # same constant the coursework used
 
 
 def load_ground_truth() -> list[dict]:
     return [json.loads(line) for line in GROUND_TRUTH_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-class Retrievers:
-    def __init__(self):
-        print("Building BM25 index...")
-        self.bm25 = BM25Search.build()
-        print(f"Loading embedding model {EMBEDDING_MODEL}...")
-        self.embedder = SentenceTransformer(EMBEDDING_MODEL)
-        self.qdrant = QdrantClient(url=QDRANT_URL)
+def build_rewrite_cache(questions: list[dict]) -> dict[str, str]:
+    """Precompute rewrites once per unique question, not once per slice
+    evaluation — the same 112 questions get evaluated across overlapping
+    subsets (overall, jargon, plain_language, numeric_fact), and each is
+    an LLM call; caching keeps this to exactly 112 calls, not 4x that."""
+    from concurrent.futures import ThreadPoolExecutor
 
-    def bm25_search(self, query: str, top_k: int) -> list[dict]:
-        return [r.chunk for r in self.bm25.search(query, top_k=top_k)]
+    client = OpenAI()
+    unique_questions = list({q["question"] for q in questions})
+    cache: dict[str, str] = {}
+    print(f"Pre-computing {len(unique_questions)} query rewrites...")
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        results = pool.map(lambda q: (q, rewrite_query(q, client)), unique_questions)
+        for original, rewritten in results:
+            cache[original] = rewritten
+    return cache
 
-    def vector_search(self, query: str, top_k: int) -> list[dict]:
-        vec = self.embedder.encode(QUERY_PREFIX + query, normalize_embeddings=True)
-        hits = self.qdrant.query_points(collection_name=COLLECTION_NAME, query=vec.tolist(), limit=top_k).points
-        return [h.payload for h in hits]
 
-    def hybrid_search(self, query: str, top_k: int) -> list[dict]:
-        result_lists = [
-            self.bm25_search(query, TOP_K_CANDIDATES),
-            self.vector_search(query, TOP_K_CANDIDATES),
-        ]
-        scores: dict[str, float] = {}
-        docs: dict[str, dict] = {}
-        for results in result_lists:
-            for rank, doc in enumerate(results):
-                key = doc["chunk_id"]
-                scores[key] = scores.get(key, 0) + 1 / (RRF_K + rank)
-                docs[key] = doc
-        ranked = sorted(scores, key=scores.get, reverse=True)
-        return [docs[key] for key in ranked[:top_k]]
+def build_methods(questions: list[dict]) -> dict:
+    print("Building BM25 index...")
+    bm25 = BM25Search.build()
+    print("Loading embedding model...")
+    vector = VectorSearch()
+    hybrid = HybridSearch(bm25, vector)
+    rewrite_cache = build_rewrite_cache(questions)
 
-    def vector_rerank_search(self, query: str, top_k: int) -> list[dict]:
-        candidates = self.vector_search(query, TOP_K_RERANK_CANDIDATES)
+    def bm25_search(query: str, top_k: int) -> list[dict]:
+        return [r.chunk for r in bm25.search(query, top_k=top_k)]
+
+    def vector_search(query: str, top_k: int) -> list[dict]:
+        return vector.search(query, top_k=top_k)
+
+    def hybrid_search(query: str, top_k: int) -> list[dict]:
+        return hybrid.search(query, top_k=top_k)
+
+    def vector_rerank_search(query: str, top_k: int) -> list[dict]:
+        candidates = vector.search(query, top_k=TOP_K_RERANK_CANDIDATES)
         return rerank(query, candidates, top_k)
 
-    def hybrid_rerank_search(self, query: str, top_k: int) -> list[dict]:
-        candidates = self.hybrid_search(query, TOP_K_RERANK_CANDIDATES)
+    def hybrid_rerank_search(query: str, top_k: int) -> list[dict]:
+        candidates = hybrid.search(query, top_k=TOP_K_RERANK_CANDIDATES)
         return rerank(query, candidates, top_k)
+
+    def hybrid_rerank_rewrite_search(query: str, top_k: int) -> list[dict]:
+        rewritten = rewrite_cache.get(query, query)
+        candidates = hybrid.search(rewritten, top_k=TOP_K_RERANK_CANDIDATES)
+        return rerank(rewritten, candidates, top_k)
+
+    return {
+        "bm25": bm25_search,
+        "vector": vector_search,
+        "hybrid": hybrid_search,
+        "vector_rerank": vector_rerank_search,
+        "hybrid_rerank": hybrid_rerank_search,
+        "hybrid_rerank_rewrite": hybrid_rerank_rewrite_search,
+    }
 
 
 def compute_relevance(question: dict, search_fn) -> list[int]:
@@ -118,15 +133,7 @@ def main() -> int:
     questions = load_ground_truth()
     print(f"Loaded {len(questions)} ground-truth questions\n")
 
-    retrievers = Retrievers()
-    methods = {
-        "bm25": retrievers.bm25_search,
-        "vector": retrievers.vector_search,
-        "hybrid": retrievers.hybrid_search,
-        "vector_rerank": retrievers.vector_rerank_search,
-        "hybrid_rerank": retrievers.hybrid_rerank_search,
-    }
-
+    methods = build_methods(questions)
     results: dict[str, dict] = {}
 
     print("\n=== Overall ===")
