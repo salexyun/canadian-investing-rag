@@ -151,16 +151,18 @@ SOURCES: list[Source] = [
     # --- Primary: OSC — Ontario regulator, fetches directly over plain HTTP.
     # jurisdiction left at its registry default ("none"): this is general
     # investing education, not Ontario-specific rules, despite the publisher.
+    #
+    # academy.getsmarteraboutmoney.ca (the whole subdomain, not just specific
+    # pages) is unreliable: its course pages returned Cloudflare challenges via
+    # headless browser and thin content-free shells via plain HTTP (dropped,
+    # see the Pillar 2 section below), and even its homepage started 403'ing
+    # on a later fetch run after initially succeeding — confirmed broken at
+    # the subdomain level, not a one-off. Dropped entirely; www.getsmarter-
+    # aboutmoney.ca (a different subdomain) fetches fine and is kept.
     make_source(
         "osc_gsam_home",
         "https://www.getsmarteraboutmoney.ca/",
         "osc_gsam", "Investing basics hub",
-        Facets("none", investment_vehicles=("stocks", "etfs", "mutual_funds", "bonds")),
-    ),
-    make_source(
-        "osc_investing_academy",
-        "https://academy.getsmarteraboutmoney.ca/",
-        "osc_gsam", "Structured investing lessons",
         Facets("none", investment_vehicles=("stocks", "etfs", "mutual_funds", "bonds")),
     ),
 
@@ -460,29 +462,26 @@ SOURCES: list[Source] = [
     ),
 
     # --- Pillar 2: investment vehicles/instruments themselves — previously almost
-    # entirely absent; only tax treatment of instruments inside accounts existed ---
-    make_source(
-        "gsam_investing_101",
-        "https://academy.getsmarteraboutmoney.ca/courses/investing-101",
-        "osc_gsam", "Investing fundamentals course: how the market works, risk/reward, investment types",
-        Facets("none", investment_vehicles=("stocks", "etfs", "mutual_funds", "bonds")),
-    ),
-    make_source(
-        "gsam_investing_102",
-        "https://academy.getsmarteraboutmoney.ca/courses/investing-102",
-        "osc_gsam", "Beyond the basics: investing plans, DIY investing, ESG, stocks, crypto",
-        Facets("none", investment_vehicles=("stocks", "crypto")),
-    ),
-    make_source(
-        "gsam_etf_101",
-        "https://www.getsmarteraboutmoney.ca/learning-path/etfs/etfs-101-what-is-an-etf/",
-        "osc_gsam", "What is an ETF",
-        Facets("none", investment_vehicles=("etfs",)),
-    ),
+    # entirely absent; only tax treatment of instruments inside accounts existed.
+    #
+    # Dropped on the content-quality audit (see data/README.md): gsam_investing_101
+    # and gsam_investing_102 (academy.getsmarteraboutmoney.ca is Cloudflare-blocked
+    # for headless-browser access, and the plain-HTTP fetch only returns a ~1.8KB
+    # shell — the real lesson content is client-rendered and unreachable via either
+    # fetch path) and gsam_etf_101 (video-based, ~950 chars of surrounding text,
+    # nothing substantive to chunk). Kept gsam_stocks (a real hub with genuine
+    # descriptive text, not just links) and added the one linked article that
+    # turned out to be real prose rather than another video. ---
     make_source(
         "gsam_stocks",
         "https://www.getsmarteraboutmoney.ca/topics/stocks/",
-        "osc_gsam", "Stocks explained",
+        "osc_gsam", "Stocks — hub page with real descriptive text, not just links",
+        Facets("none", investment_vehicles=("stocks",)),
+    ),
+    make_source(
+        "gsam_stock_market_works",
+        "https://www.getsmarteraboutmoney.ca/learning-path/getting-started/how-the-stock-market-works/",
+        "osc_gsam", "How the stock market works (real article, ~12K chars — verified before adding)",
         Facets("none", investment_vehicles=("stocks",)),
     ),
 
@@ -510,13 +509,25 @@ SOURCES: list[Source] = [
     make_source(
         "cipf_about",
         "https://www.cipf.ca/about-us",
-        "cipf", "What CIPF protects if your investment dealer becomes insolvent",
+        "cipf", "CIPF about-us page — a menu hub, not prose; kept alongside cipf_mandate below (see content-quality audit)",
+        Facets("none"),
+    ),
+    make_source(
+        "cipf_mandate",
+        "https://www.cipf.ca/about-us/cipf-s-mandate",
+        "cipf", "CIPF's actual mandate/purpose — the real content behind the about-us menu",
         Facets("none"),
     ),
     make_source(
         "cdic_home",
         "https://www.cdic.ca/",
-        "cdic", "What CDIC insures — deposit accounts and GICs at member banks",
+        "cdic", "CDIC homepage — mostly a landing page; kept alongside cdic_about below (see content-quality audit)",
+        Facets("none", investment_vehicles=("gics",)),
+    ),
+    make_source(
+        "cdic_about",
+        "https://www.cdic.ca/about/",
+        "cdic", "About CDIC — its vision/purpose as a federal Crown corporation",
         Facets("none", investment_vehicles=("gics",)),
     ),
 
@@ -533,5 +544,206 @@ SOURCES: list[Source] = [
         "https://www.canada.ca/en/services/benefits/publicpensions/old-age-security.html",
         "esdc", "Old Age Security, including the OAS clawback/repayment threshold",
         Facets("none", tax_concepts=("oas_clawback",)),
+    ),
+
+    # =========================================================================
+    # Content-quality audit follow-up. A text-length audit of all 66 sources
+    # above found ~40% were "thin" (<3000 visible chars despite large HTML) —
+    # not a fetch failure, but a systemic CRA pattern: many of the subpages
+    # added in the breadth-expansion pass are themselves hub pages (one intro
+    # sentence + a link list to deeper leaf pages), not the leaf content itself.
+    # These are those leaf pages, pulled from the actual link structure of the
+    # hub pages already fetched — same method as the original breadth pass, not
+    # guessed. See data/README.md for the full audit writeup.
+    # =========================================================================
+
+    # --- TFSA: death-of-holder hub had zero standalone content ---
+    make_source(
+        "cra_tfsa_death_what_happens",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/death-of-holder/what-happens.html",
+        "cra", "What happens to a TFSA when the holder dies",
+        Facets("tfsa", special_situations=("death_and_estates",)),
+    ),
+    make_source(
+        "cra_tfsa_death_successor",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/death-of-holder/successor-holder.html",
+        "cra", "TFSA successor holder rules",
+        Facets("tfsa", special_situations=("death_and_estates",)),
+    ),
+    make_source(
+        "cra_tfsa_death_beneficiary",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/death-of-holder/beneficiary.html",
+        "cra", "TFSA designated beneficiary rules",
+        Facets("tfsa", special_situations=("death_and_estates",)),
+    ),
+
+    # --- TFSA: owing-tax hub had only a boilerplate notice, real content one level deeper ---
+    make_source(
+        "cra_tfsa_owing_tax_excess",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/owing-tax/excess.html",
+        "cra", "Tax on TFSA excess (over-contribution) amounts",
+        Facets("tfsa", tax_concepts=("over_contribution_penalty",)),
+    ),
+    make_source(
+        "cra_tfsa_owing_tax_non_resident",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/owing-tax/non-resident.html",
+        "cra", "Tax on TFSA contributions made while a non-resident",
+        Facets("tfsa", tax_concepts=("withholding_tax",), special_situations=("non_resident",)),
+    ),
+
+    # --- TFSA: contributing hub's remaining real subpages (calculate-room and
+    # overcontribute were already fetched directly in the original breadth pass) ---
+    make_source(
+        "cra_tfsa_contributing_before",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/contributing/before.html",
+        "cra", "What to know before you contribute to a TFSA",
+        Facets("tfsa", actions=("contributing",)),
+    ),
+    make_source(
+        "cra_tfsa_contributing_how",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/contributing/how.html",
+        "cra", "How to contribute to a TFSA",
+        Facets("tfsa", actions=("contributing",)),
+    ),
+
+    # --- FHSA: life-events hub had only one lead-in sentence ---
+    make_source(
+        "cra_fhsa_marriage_breakdown",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/ending-your-marriage-common-law-partnership.html",
+        "cra", "FHSA rules on marriage/common-law breakdown",
+        Facets("fhsa", special_situations=("divorce_separation",)),
+    ),
+    make_source(
+        "cra_fhsa_non_residents",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/non-residents-and-fhsas.html",
+        "cra", "How non-residency affects an FHSA",
+        Facets("fhsa", special_situations=("non_resident",)),
+    ),
+    make_source(
+        "cra_fhsa_death",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/death-and-fhsas.html",
+        "cra", "What happens to an FHSA when the holder dies",
+        Facets("fhsa", special_situations=("death_and_estates",)),
+    ),
+
+    # --- RRSP: cra_rrsp_detail's hub revealed core procedural subpages were
+    # missing entirely — the same opening/contributing/transferring/withdrawing
+    # coverage TFSA and FHSA already had, RRSP didn't ---
+    make_source(
+        "cra_rrsp_setting_up",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/setting-rrsp.html",
+        "cra", "Setting up an RRSP",
+        Facets("rrsp", actions=("opening_account",)),
+    ),
+    make_source(
+        "cra_rrsp_contributing_prpp",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/contributing-a-rrsp-prpp.html",
+        "cra", "Contributing to an RRSP, PRPP, or SPP — this specific page turned out to be a hub-under-a-hub, one more level than the rest; its two highest-value children below, deliberately stopping there rather than continuing to drill indefinitely",
+        Facets("rrsp", actions=("contributing",)),
+    ),
+    make_source(
+        "cra_rrsp_deduction_limit",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/contributing-a-rrsp-prpp/contributions-affect-your-rrsp-prpp-deduction-limit.html",
+        "cra", "How contributions affect your RRSP deduction limit",
+        Facets("rrsp", tax_concepts=("contribution_room",), actions=("contributing", "calculating_room")),
+    ),
+    make_source(
+        "cra_rrsp_excess_contributions",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/contributing-a-rrsp-prpp/what-happens-you-over-your-rrsp-prpp-deduction-limit.html",
+        "cra", "What happens if you go over your RRSP/PRPP deduction limit",
+        Facets("rrsp", tax_concepts=("over_contribution_penalty",), actions=("contributing",)),
+    ),
+    make_source(
+        "cra_rrsp_transferring",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/transferring.html",
+        "cra", "Transferring RRSP property",
+        Facets("rrsp", actions=("transferring",)),
+    ),
+    make_source(
+        "cra_rrsp_making_withdrawals",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/making-withdrawals.html",
+        "cra", "Making withdrawals from an RRSP",
+        Facets("rrsp", actions=("withdrawing",)),
+    ),
+    make_source(
+        "cra_rrsp_turn71_options",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/rrsp-options-when-you-turn-71/options-your-rrsps.html",
+        "cra", "RRSP options at age 71 for your own RRSPs",
+        Facets("rrsp", actions=("withdrawing", "transferring")),
+    ),
+    make_source(
+        "cra_rrsp_turn71_spousal",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/rrsp-options-when-you-turn-71/spousal-rrsps-common-law-partner-rrsps.html",
+        "cra", "RRSP options at age 71 for spousal/common-law RRSPs",
+        Facets("rrsp", actions=("withdrawing", "transferring")),
+    ),
+
+    # --- RRIF: same pattern — the overview page pointed to real subpages ---
+    make_source(
+        "cra_rrif_setting_up",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-retirement-income-fund-rrif/setting-a-rrif.html",
+        "cra", "Setting up a RRIF",
+        Facets("rrif", actions=("opening_account",)),
+    ),
+    make_source(
+        "cra_rrif_transferring",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-retirement-income-fund-rrif/transferring-your-rrif.html",
+        "cra", "Transferring to a RRIF",
+        Facets("rrif", actions=("transferring",)),
+    ),
+    make_source(
+        "cra_rrif_receiving_income",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-retirement-income-fund-rrif/receiving-income-a-rrif.html",
+        "cra", "Receiving income from a RRIF",
+        Facets("rrif", actions=("withdrawing",)),
+    ),
+
+    # --- PRPP: kept light — a narrower-audience account type, just the core two ---
+    make_source(
+        "cra_prpp_joining",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/pooled-registered-pension-plan-prpp-information-individuals/joining-a-prpp.html",
+        "cra", "Joining a PRPP",
+        Facets("prpp", actions=("opening_account",)),
+    ),
+    make_source(
+        "cra_prpp_contributions",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/pooled-registered-pension-plan-prpp-information-individuals/contributions-a-prpp.html",
+        "cra", "Contributing to a PRPP",
+        Facets("prpp", actions=("contributing",)),
+    ),
+
+    # --- RESP: CESG/CLB hub had only a one-sentence lead-in ---
+    make_source(
+        "cra_resp_cesg",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/canada-education-savings-programs-cesp/canada-education-savings-grant-cesg.html",
+        "cra", "Canada Education Savings Grant (CESG) eligibility and amounts",
+        Facets("resp"),
+    ),
+    make_source(
+        "cra_resp_clb",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/canada-education-savings-programs-cesp/canada-learning-bond.html",
+        "cra", "Canada Learning Bond (CLB) eligibility and amounts",
+        Facets("resp"),
+    ),
+
+    # --- Taxation: investment-income hub had a one-sentence lead-in; the real
+    # line-by-line reporting content lives on these three per-line pages ---
+    make_source(
+        "cra_line_12000_dividends",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12000-taxable-amount-dividends-eligible-other-than-eligible-taxable-canadian-corporations.html",
+        "cra", "Line 12000/12010 — reporting taxable dividends from Canadian corporations",
+        Facets("non_registered", tax_concepts=("dividend_tax_credit",), actions=("filing_taxes",)),
+    ),
+    make_source(
+        "cra_line_12100_interest",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12100-interest-other-investment-income.html",
+        "cra", "Line 12100 — reporting interest and other investment income",
+        Facets("non_registered", actions=("filing_taxes",)),
+    ),
+    make_source(
+        "cra_line_12700_capital_gains",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/line-12700-capital-gains.html",
+        "cra", "Line 12700 — reporting taxable capital gains",
+        Facets("non_registered", tax_concepts=("capital_gains",), actions=("filing_taxes",)),
     ),
 ]

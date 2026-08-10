@@ -69,7 +69,7 @@ Sourced from official government and government-endorsed publications
 primary/secondary trust-tier split, and the schema each page and
 chunk is tagged with. In short:
 
-- **Primary** (7 authorities, 60 pages): CRA, CIRO, AMF, Service
+- **Primary** (7 authorities, 87 pages): CRA, CIRO, AMF, Service
   Canada/ESDC, OSC/GetSmarterAboutMoney, CIPF, CDIC
 - **Secondary** (5 authorities, 6 pages, supplementary only): FP
   Canada, MoneySense, RBC, TD, Questrade

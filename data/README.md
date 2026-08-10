@@ -172,7 +172,7 @@ make what's retrieved more useful," not kept by default:
 
 ## Sources
 
-66 pages across 12 active authorities (5-pillar scope — see the main
+93 pages across 12 active authorities (5-pillar scope — see the main
 [README's Scope section](../README.md#scope)). The full, authoritative
 URL list lives in [ingestion/sources.py](../ingestion/sources.py) —
 one entry per page, tagged with facets — not duplicated here as a
@@ -183,18 +183,63 @@ manifest (not hand-typed):
 
 | Authority | Tier | Jurisdiction | Fetch method | Pages | License |
 |---|---|---|---|---|---|
-| CRA (`cra`) | primary | federal | headless browser | 48 | OGL-Canada |
-| OSC / GetSmarterAboutMoney (`osc_gsam`) | primary | none | direct HTTP | 6 | OSC content |
+| CRA (`cra`) | primary | federal | headless browser | 76 | OGL-Canada |
+| OSC / GetSmarterAboutMoney (`osc_gsam`) | primary | none | direct HTTP | 3 | OSC content |
 | Service Canada / ESDC (`esdc`) | primary | federal | headless browser | 2 | OGL-Canada |
 | CIRO (`ciro`) | primary | national | headless browser | 1 | CIRO content |
 | AMF (`amf`) | primary | qc | headless browser | 1 | AMF content |
-| CIPF (`cipf`) | primary | national | direct HTTP | 1 | CIPF content |
-| CDIC (`cdic`) | primary | federal | direct HTTP | 1 | CDIC content |
+| CIPF (`cipf`) | primary | national | direct HTTP | 2 | CIPF content |
+| CDIC (`cdic`) | primary | federal | direct HTTP | 2 | CDIC content |
 | TD (`td`) | secondary | none | direct HTTP | 2 | TD content |
 | FP Canada (`fpcanada`) | secondary | none | direct HTTP | 1 | FP Canada content |
 | MoneySense (`moneysense`) | secondary | none | direct HTTP | 1 | MoneySense content |
 | RBC (`rbc`) | secondary | none | direct HTTP | 1 | RBC content |
 | Questrade (`questrade`) | secondary | none | direct HTTP | 1 | Questrade content |
+
+## Content-quality audit
+
+A text-length audit after the breadth-expansion pass found ~40% of
+pages (26/66 at the time) were "thin" — under 3,000 visible characters
+despite ~180KB of raw HTML. Not a fetch failure: a systemic CRA
+pattern where a subpage is itself a hub (one intro sentence, then a
+"Services and information"/"Topics" link list to the real leaf pages),
+not the leaf content. `cra_investment_income` — one of the original 15
+sources, from before this rigor was applied — had this too: a
+one-sentence overview pointing to the real Line 12000/12100/12700
+content we'd never fetched.
+
+Fixed by drilling into each hub's actual link structure (same method
+as the original breadth pass — pulled from real fetched HTML, not
+guessed) and fetching the real leaf pages: TFSA death/owing-tax/
+contributing subpages, FHSA life-events subpages, and — the biggest
+find — RRSP was missing the same opening/contributing/transferring/
+withdrawing coverage TFSA and FHSA already had, plus RRIF- and
+PRPP-specific procedural pages, RESP grant details, and the three
+CRA tax-line pages. One page (`cra_rrsp_contributing_prpp`) turned out
+to be a hub-under-a-hub; fixed its two highest-value children
+(deduction limit, excess contributions) and deliberately **stopped
+there** rather than continuing to drill indefinitely — diminishing
+returns three levels into CRA's site tree.
+
+Also dropped three sources found to be structurally unfetchable or
+low-value during this same audit, rather than left silently degrading
+retrieval quality: `gsam_investing_101`/`gsam_investing_102` (the
+`academy.getsmarteraboutmoney.ca` subdomain is Cloudflare-blocked for
+headless browser and returns a content-free ~1.8KB shell over plain
+HTTP — confirmed subdomain-wide when `osc_investing_academy`, fetched
+successfully earlier in the same session, later 403'd on a re-run) and
+`gsam_etf_101` (video-based, ~950 chars of surrounding text, nothing
+to chunk). Replaced with `gsam_stock_market_works`, a genuine ~12K-char
+article on the same publisher's other subdomain, verified before
+adding rather than assumed.
+
+**Result**: 93 pages, 0 fetch errors, median visible text per page
+4,653 characters (up from 4,897 on the pre-audit 66-page set — flat
+rather than up, because many of the new leaf pages are legitimately
+short single-fact answers, e.g. the spousal-RRSP-at-71 rule is one
+real sentence; spot-checked several of the still-under-3,000-char
+pages individually to confirm short-and-complete rather than another
+hidden hub layer before accepting the number).
 
 CIPF/CDIC are industry-funded but classed **primary**, not secondary
 — coverage is a CIRO-membership requirement (CIPF) or a federal Crown
@@ -240,21 +285,26 @@ deferred to a small separate integration rather than forced through
 Every primary *regulator* (CRA, CIRO, AMF) sits behind bot protection
 (Akamai or Cloudflare) even though each `robots.txt` explicitly
 permits crawling — plain HTTP clients get an instant block, a real
-browser session loads the page cleanly. Every other source tested —
-including the two newer primary additions, CIPF and CDIC — fetches
-directly over plain HTTP; regulator status doesn't predict bot
-protection (CIPF/CDIC are as authoritative as CIRO but unprotected).
+browser session loads the page cleanly. CIPF and CDIC fetch directly
+over plain HTTP despite being just as authoritative — regulator status
+doesn't reliably predict bot protection. It also doesn't reliably
+predict its *absence*: `academy.getsmarteraboutmoney.ca` (OSC's own
+subdomain) turned out to be Cloudflare-protected too — a real "Just a
+moment" JS challenge for headless browser, and a content-free shell
+for plain HTTP — confirmed subdomain-wide, not one flaky page (see the
+Content-quality audit above). Treat each *domain*, not each publisher,
+as needing its own fetchability check; a publisher being unprotected
+on one subdomain says nothing about another.
 
 - **Headless-browser fetch path**: CRA, ESDC, CIRO, AMF
-- **Plain HTTP fetch path**: OSC/GetSmarterAboutMoney, CIPF, CDIC, FP
-  Canada, MoneySense, RBC, TD, Questrade
+- **Plain HTTP fetch path**: OSC/GetSmarterAboutMoney (`www.` subdomain
+  only), CIPF, CDIC, FP Canada, MoneySense, RBC, TD, Questrade
 
-No JS challenge/CAPTCHA was observed on any source (Cloudflare's
-"Just a moment" interstitial cleared automatically in a normal browser
-session), so headless Chromium is sufficient without a CAPTCHA-solving
-step — add a politeness delay between requests regardless, since none
-of these sites publish a rate limit. Confirmed at full scale: all 66
-pages fetched successfully in one run, 0 failures.
+Add a politeness delay between requests regardless of path, since none
+of these sites publish a rate limit. Confirmed at full scale: 93 pages
+fetched successfully, 0 fetch errors (one source,
+`academy.getsmarteraboutmoney.ca`, was dropped after confirming it
+unfetchable via either path — see Content-quality audit).
 
 ## Freshness
 
