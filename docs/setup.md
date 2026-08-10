@@ -13,8 +13,14 @@
 ```bash
 git clone https://github.com/<your-username>/canadian-investing-rag.git
 cd canadian-investing-rag
-cp .env.example .env
-# edit .env with your API key and any overrides
+cat > .env << 'EOF'
+OPENAI_API_KEY=
+LANGFUSE_PUBLIC_KEY=
+LANGFUSE_SECRET_KEY=
+LANGFUSE_HOST=https://cloud.langfuse.com
+QDRANT_URL=http://vector-db:6333
+EOF
+# then edit .env with your actual API key and any overrides
 
 python3 -m venv .venv
 source .venv/bin/activate
