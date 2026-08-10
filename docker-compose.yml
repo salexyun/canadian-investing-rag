@@ -1,5 +1,3 @@
-version: "3.9"
-
 # Skeleton — service definitions get filled in as each component is built.
 # Target end state: app + vector DB, runnable with a single `docker compose up`.
 #

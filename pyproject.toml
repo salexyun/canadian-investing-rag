@@ -10,6 +10,8 @@ dependencies = [
     "lxml>=6.1.1",
     "playwright>=1.62.0",
     "streamlit>=1.59.2",
+    "sentence-transformers>=5.7.0",
+    "qdrant-client>=1.19.0",
 ]
 
 [dependency-groups]
