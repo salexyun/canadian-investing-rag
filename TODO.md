@@ -19,11 +19,11 @@ tool while a session is active.
 - [x] Set up BM25 keyword index — `rank-bm25` over the same chunk text (`rag/bm25_search.py`); found concrete divergence evidence against vector search (see below)
 - [x] Build retrieval evaluation question set — 112 questions from 56 stratified-sampled chunks, jargon-exact + newcomer-plain-language pairs, `gpt-5.6-luna`, $0.03 (`eval/build_ground_truth.py`)
 - [x] Drop `.env.example` — vars now documented inline in `docs/setup.md`
+- [x] Evaluate retrieval approaches — BM25 vs vector vs hybrid (RRF) against the 112-question set (`eval/evaluate_retrieval.py`) *(rubric: Retrieval evaluation)*. **Winner: hybrid** — overall hit_rate=0.714/mrr=0.581 vs vector 0.688/0.566 vs bm25 0.625/0.516. Confirmed the predicted split: bm25 beats vector on jargon queries (0.929 vs 0.893 hit_rate) but collapses on plain-language ones (0.321 hit_rate, no shared vocabulary). Nuance not smoothed over: on the plain-language slice hybrid ties vector's hit-rate but has slightly *lower* MRR (0.362 vs 0.374) — fusing in a weak BM25 signal can drag down top-1 ranking even when it doesn't hurt hit-rate. Hybrid wins overall, not on every slice.
 
 ## Next
 
-- [ ] Evaluate retrieval approaches (BM25 vs vector vs hybrid via RRF) against the 112-question set — hit-rate/MRR overall *and* split by `phrasing_style`, since that split is the actual point *(rubric: Retrieval evaluation)*
-- [ ] (If hybrid or a specific method needs it) add reranking *(rubric best-practices bonus)*
+- [ ] Reranking — real motivation now, not just a rubric checkbox: plain-language MRR (hybrid 0.362) still trails jargon MRR (0.801) by a lot even with hybrid winning overall; worth testing whether a reranker narrows that gap *(rubric best-practices bonus)*
 - [ ] Set up Langfuse Cloud (free tier) + SDK integration — before the RAG flow is built, so tracing is in from day one
 - [ ] Build RAG prompt construction + LLM call, tier/content_type-aware (`rag/`) — composition-based (a RAG class taking a retriever), Langfuse-instrumented *(rubric: Retrieval flow)*
 - [ ] Add query rewriting, `gpt-5.6-luna` *(rubric best-practices bonus)*
