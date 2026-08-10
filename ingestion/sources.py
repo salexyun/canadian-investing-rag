@@ -195,4 +195,343 @@ SOURCES: list[Source] = [
         "questrade", "Practical DIY-investing steps",
         Facets("none", investment_vehicles=("stocks", "etfs", "options", "crypto")),
     ),
+
+    # =========================================================================
+    # Breadth expansion — five-pillar scope (accounts & vehicles, instruments,
+    # taxation, regulation & protection, residency). Each entry below closes a
+    # specific, named gap rather than padding for volume — see data/README.md's
+    # "Scope" section for the five pillars and the coverage-gap findings that
+    # drove this list. URLs for the CRA subpages were pulled directly from the
+    # link structure of the already-fetched overview pages, not guessed.
+    # =========================================================================
+
+    # --- Pillar 1: TFSA subpages (overview alone was the only TFSA coverage before) ---
+    make_source(
+        "cra_tfsa_what",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/what.html",
+        "cra", "What a TFSA is, conceptually",
+        Facets("tfsa"),
+    ),
+    make_source(
+        "cra_tfsa_opening",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/opening.html",
+        "cra", "Opening a TFSA",
+        Facets("tfsa", actions=("opening_account",)),
+    ),
+    make_source(
+        "cra_tfsa_contributing",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/contributing.html",
+        "cra", "Contributing to a TFSA",
+        Facets("tfsa", tax_concepts=("contribution_room",), actions=("contributing",)),
+    ),
+    make_source(
+        "cra_tfsa_calculate_room",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/contributing/calculate-room.html",
+        "cra", "Calculating TFSA contribution room",
+        Facets("tfsa", tax_concepts=("contribution_room",), actions=("calculating_room",)),
+    ),
+    make_source(
+        "cra_tfsa_overcontribute",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/contributing/overcontribute.html",
+        "cra", "Over-contributing to a TFSA",
+        Facets("tfsa", tax_concepts=("over_contribution_penalty",), actions=("contributing",)),
+    ),
+    make_source(
+        "cra_tfsa_withdraw",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/withdraw.html",
+        "cra", "Withdrawing from a TFSA",
+        Facets("tfsa", actions=("withdrawing",)),
+    ),
+    make_source(
+        "cra_tfsa_transfer",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/transfer.html",
+        "cra", "Requesting a TFSA transfer (also covers divorce/separation transfers)",
+        Facets("tfsa", actions=("transferring",), special_situations=("divorce_separation",)),
+    ),
+    make_source(
+        "cra_tfsa_owing_tax",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/owing-tax.html",
+        "cra", "Owing tax on a TFSA",
+        Facets("tfsa", tax_concepts=("over_contribution_penalty",)),
+    ),
+    make_source(
+        "cra_tfsa_owing_tax_pay",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/owing-tax/pay.html",
+        "cra", "How to pay tax owed on a TFSA",
+        Facets("tfsa", tax_concepts=("over_contribution_penalty",), actions=("filing_taxes",)),
+    ),
+    make_source(
+        "cra_tfsa_death",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/death-of-holder.html",
+        "cra", "If a TFSA holder dies",
+        Facets("tfsa", special_situations=("death_and_estates",)),
+    ),
+    make_source(
+        "cra_tfsa_non_resident",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/non-resident.html",
+        "cra", "If you become a non-resident, and how it affects a TFSA",
+        Facets("tfsa", special_situations=("non_resident",)),
+    ),
+    make_source(
+        "cra_tfsa_types_investments",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/types-investments.html",
+        "cra", "What you can hold in a TFSA, including foreign withholding tax on foreign dividends",
+        Facets("tfsa", tax_concepts=("withholding_tax",)),
+    ),
+
+    # --- Pillar 1: FHSA subpages (overview alone was the only FHSA coverage before) ---
+    make_source(
+        "cra_fhsa_opening",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/opening-your-fhsas.html",
+        "cra", "Opening an FHSA",
+        Facets("fhsa", actions=("opening_account",)),
+    ),
+    make_source(
+        "cra_fhsa_contributing",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/contributing-your-fhsa.html",
+        "cra", "Participating/contributing to an FHSA",
+        Facets("fhsa", tax_concepts=("contribution_room",), actions=("contributing",)),
+    ),
+    make_source(
+        "cra_fhsa_transfers_in",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/transfers-into-your-fhsas.html",
+        "cra", "Transfers into an FHSA",
+        Facets("fhsa", actions=("transferring",)),
+    ),
+    make_source(
+        "cra_fhsa_withdrawals_transfers_out",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/withdrawals-transfers-out-your-fhsas.html",
+        "cra", "Withdrawals and transfers out of an FHSA",
+        Facets("fhsa", actions=("withdrawing", "transferring")),
+    ),
+    make_source(
+        "cra_fhsa_tax_deductions",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/tax-deductions-fhsa-contributions.html",
+        "cra", "Tax deductions for FHSA contributions",
+        Facets("fhsa", tax_concepts=("tax_deduction",)),
+    ),
+    make_source(
+        "cra_fhsa_overcontribute",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/what-happens-contribute-transfer-too-much.html",
+        "cra", "What happens if you contribute or transfer too much to an FHSA",
+        Facets("fhsa", tax_concepts=("over_contribution_penalty",)),
+    ),
+    make_source(
+        "cra_fhsa_closing",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/closing-your-fhsa.html",
+        "cra", "Closing an FHSA",
+        Facets("fhsa"),
+    ),
+    make_source(
+        "cra_fhsa_life_events",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/life-events-first-home-savings-accounts.html",
+        "cra", "FHSA rules around death, divorce/separation, and becoming a non-resident",
+        Facets("fhsa", special_situations=("death_and_estates", "divorce_separation", "non_resident")),
+    ),
+    make_source(
+        "cra_fhsa_investments",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account/investments-your-fhsa.html",
+        "cra", "What you can hold in an FHSA",
+        Facets("fhsa", investment_vehicles=("stocks", "etfs", "mutual_funds", "bonds", "gics")),
+    ),
+
+    # --- Pillar 1: RRSP family, including RRIF and PRPP as their own account types ---
+    make_source(
+        "cra_rrsp_definitions",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/definitions-rrsps.html",
+        "cra", "RRSP glossary/definitions",
+        Facets("rrsp"),
+    ),
+    make_source(
+        "cra_rrsp_detail",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/registered-retirement-savings-plan-rrsp.html",
+        "cra", "RRSP explained in detail",
+        Facets("rrsp"),
+    ),
+    make_source(
+        "cra_rrsp_turn_71",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/rrsp-options-when-you-turn-71.html",
+        "cra", "RRSP options when you turn 71",
+        Facets("rrsp", actions=("withdrawing", "transferring")),
+    ),
+    make_source(
+        "cra_rrsp_hbp",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/what-home-buyers-plan.html",
+        "cra", "The Home Buyers' Plan — withdrawing from an RRSP to buy a home",
+        Facets("rrsp", actions=("withdrawing",)),
+    ),
+    make_source(
+        "cra_rrsp_llp",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/lifelong-learning-plan.html",
+        "cra", "The Lifelong Learning Plan — withdrawing from an RRSP for education",
+        Facets("rrsp", actions=("withdrawing",)),
+    ),
+    make_source(
+        "cra_rrif",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-retirement-income-fund-rrif.html",
+        "cra", "RRIF — closes the account_type coverage gap identified earlier",
+        Facets("rrif", actions=("withdrawing",)),
+    ),
+    make_source(
+        "cra_rrsp_important_dates",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans/important-dates-rrsp-rrif-rdsp.html",
+        "cra", "Important RRSP/RRIF/RDSP dates",
+        Facets("rrsp"),
+    ),
+    make_source(
+        "cra_prpp",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/pooled-registered-pension-plan-prpp-information-individuals.html",
+        "cra", "Pooled Registered Pension Plan (PRPP) — closes the account_type coverage gap identified earlier",
+        Facets("prpp"),
+    ),
+
+    # --- Pillar 1: RESP subpages (overview alone was the only RESP coverage before) ---
+    make_source(
+        "cra_resp_works",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/resp-works.html",
+        "cra", "How an RESP works",
+        Facets("resp"),
+    ),
+    make_source(
+        "cra_resp_subscriber",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/who-a-subscriber.html",
+        "cra", "Who can be an RESP subscriber",
+        Facets("resp"),
+    ),
+    make_source(
+        "cra_resp_contributions",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/resp-contributions.html",
+        "cra", "RESP contributions",
+        Facets("resp", actions=("contributing",)),
+    ),
+    make_source(
+        "cra_resp_beneficiary",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/who-become-a-beneficiary.html",
+        "cra", "Designating an RESP beneficiary",
+        Facets("resp"),
+    ),
+    make_source(
+        "cra_resp_cesp",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/canada-education-savings-programs-cesp.html",
+        "cra", "Canada Education Savings Grant (CESG) and Canada Learning Bond (CLB)",
+        Facets("resp"),
+    ),
+    make_source(
+        "cra_resp_provincial",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/provincial-education-savings-programs.html",
+        "cra", "Provincial education savings programs (BC, Quebec)",
+        Facets("resp"),
+    ),
+    make_source(
+        "cra_resp_payments",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/payments-resp.html",
+        "cra", "RESP payments, transfers, and rollovers",
+        Facets("resp", actions=("withdrawing", "transferring")),
+    ),
+    make_source(
+        "cra_resp_anti_avoidance",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps/anti-avoidance-rules-resps.html",
+        "cra", "Anti-avoidance rules for RESPs",
+        Facets("resp"),
+    ),
+
+    # --- Pillar 1: RDSP — closes the account_type coverage gap identified earlier ---
+    make_source(
+        "cra_rdsp_overview",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-disability-savings-plan-rdsp.html",
+        "cra", "What an RDSP is",
+        Facets("rdsp"),
+    ),
+    make_source(
+        "cra_rdsp_grant_bond",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-disability-savings-plan-rdsp/canada-disability-savings-grant-canada-disability-savings-bond.html",
+        "cra", "Canada Disability Savings Grant and Bond",
+        Facets("rdsp", actions=("contributing",)),
+    ),
+
+    # --- Pillar 1: LIRA/LRSP — no clean CRA consumer page found (see data/README.md);
+    # this is a real coverage gap, flagged rather than papered over. TD's explainer
+    # is the only source found and is secondary-tier, not a primary-source substitute.
+    make_source(
+        "td_lira_lrsp",
+        "https://www.td.com/ca/en/investing/direct-investing/registered-accounts/lira-lrsp",
+        "td", "LIRA/LRSP explained (secondary — no primary CRA consumer page found)",
+        Facets("lira_lrsp", actions=("transferring", "withdrawing")),
+    ),
+
+    # --- Pillar 2: investment vehicles/instruments themselves — previously almost
+    # entirely absent; only tax treatment of instruments inside accounts existed ---
+    make_source(
+        "gsam_investing_101",
+        "https://academy.getsmarteraboutmoney.ca/courses/investing-101",
+        "osc_gsam", "Investing fundamentals course: how the market works, risk/reward, investment types",
+        Facets("none", investment_vehicles=("stocks", "etfs", "mutual_funds", "bonds")),
+    ),
+    make_source(
+        "gsam_investing_102",
+        "https://academy.getsmarteraboutmoney.ca/courses/investing-102",
+        "osc_gsam", "Beyond the basics: investing plans, DIY investing, ESG, stocks, crypto",
+        Facets("none", investment_vehicles=("stocks", "crypto")),
+    ),
+    make_source(
+        "gsam_etf_101",
+        "https://www.getsmarteraboutmoney.ca/learning-path/etfs/etfs-101-what-is-an-etf/",
+        "osc_gsam", "What is an ETF",
+        Facets("none", investment_vehicles=("etfs",)),
+    ),
+    make_source(
+        "gsam_stocks",
+        "https://www.getsmarteraboutmoney.ca/topics/stocks/",
+        "osc_gsam", "Stocks explained",
+        Facets("none", investment_vehicles=("stocks",)),
+    ),
+
+    # --- Pillar 3: taxation — foreign reporting/withholding, previously absent ---
+    make_source(
+        "cra_qualified_investments_folio",
+        "https://www.canada.ca/en/revenue-agency/services/tax/technical-information/income-tax/income-tax-folios-index/series-3-property-investments-savings-plans/series-3-property-investments-savings-plan-folio-10-registered-plans-individuals/income-tax-folio-s3-f10-c1-qualified-investments-rrsps-resps-rrifs-rdsps-tfsas.html",
+        "cra", "Technical folio: what counts as a qualified investment across all registered plans",
+        Facets("none"),
+    ),
+    make_source(
+        "cra_t1135",
+        "https://www.canada.ca/en/revenue-agency/services/tax/international-non-residents/information-been-moved/foreign-reporting/foreign-income-verification-statement.html",
+        "cra", "T1135 Foreign Income Verification Statement — do you have to report foreign property?",
+        Facets("none", tax_concepts=("foreign_reporting",), special_situations=("non_resident",)),
+    ),
+    make_source(
+        "cra_nr4",
+        "https://www.canada.ca/en/revenue-agency/services/forms-publications/publications/t4061/nr4-non-resident-tax-withholding-remitting-reporting.html",
+        "cra", "NR4 — non-resident tax withholding, remitting, and reporting",
+        Facets("none", tax_concepts=("withholding_tax", "foreign_reporting"), special_situations=("non_resident",)),
+    ),
+
+    # --- Pillar 4: regulation & investor protection — CIPF/CDIC previously absent entirely ---
+    make_source(
+        "cipf_about",
+        "https://www.cipf.ca/about-us",
+        "cipf", "What CIPF protects if your investment dealer becomes insolvent",
+        Facets("none"),
+    ),
+    make_source(
+        "cdic_home",
+        "https://www.cdic.ca/",
+        "cdic", "What CDIC insures — deposit accounts and GICs at member banks",
+        Facets("none", investment_vehicles=("gics",)),
+    ),
+
+    # --- Pillar 5: retirement income / residency — CPP/OAS previously absent,
+    # despite oas_clawback already sitting in the tax_concepts vocabulary ---
+    make_source(
+        "canada_public_pensions",
+        "https://www.canada.ca/en/services/benefits/publicpensions.html",
+        "esdc", "CPP and OAS overview — how public pensions interact with retirement withdrawal planning",
+        Facets("none"),
+    ),
+    make_source(
+        "canada_oas",
+        "https://www.canada.ca/en/services/benefits/publicpensions/old-age-security.html",
+        "esdc", "Old Age Security, including the OAS clawback/repayment threshold",
+        Facets("none", tax_concepts=("oas_clawback",)),
+    ),
 ]

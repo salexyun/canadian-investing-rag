@@ -94,7 +94,7 @@ the ability to filter cleanly (e.g. "every `numeric_fact` chunk about
 
 - **`account_type`** — required, single-valued, closed by construction
   (Canada has exactly these registered-account types): `tfsa | rrsp |
-  rrif | fhsa | resp | rdsp | lira_lrsp | non_registered | none`
+  rrif | fhsa | resp | rdsp | lira_lrsp | prpp | non_registered | none`
 - **`tax_concepts`** — bounded, multi-valued: `capital_gains |
   capital_losses | superficial_loss | attribution_rules |
   contribution_room | over_contribution_penalty | withholding_tax |
@@ -109,12 +109,13 @@ the ability to filter cleanly (e.g. "every `numeric_fact` chunk about
   that residency/life-event status changes the answer, so it needs to
   be filterable on its own, not buried.
 
-Not every page fits these five — CIRO/AMF/OSC-GSAM content is
-institutional/educational, not about a specific account+tax+vehicle+
-action. Those get `account_type="none"` and retrieval leans on
-`source_authority`/`topic` instead; that's an accepted gap, not an
-oversight, since the facets exist to make the core registered-account
-fact content filterable, not to force-fit everything.
+Not every page fits these five — CIRO/AMF/CIPF/CDIC/OSC-GSAM content is
+institutional/educational/regulatory, not about a specific account+
+tax+vehicle+action. Those get `account_type="none"` and retrieval
+leans on `source_authority`/`topic` instead; that's an accepted gap,
+not an oversight, since the facets exist to make the core
+account-and-instrument content filterable, not to force-fit
+everything.
 
 Every source is validated against these vocabularies (plus
 `SOURCE_AUTHORITY_INFO`, `JURISDICTIONS`, `CONTENT_TYPES`) at
@@ -123,11 +124,16 @@ registration time via `validate_source_fields` / `validate_chunk_fields`
 value raises immediately rather than silently reaching the knowledge
 base.
 
-**Coverage gap found by this schema, not by eyeballing:** running the
-15 current sources against the closed `account_type` set shows zero
-coverage for `rdsp` and `lira_lrsp`, and `rrif` only appears folded
-into the RRSP page rather than as its own account type. Worth filling
-when we expand breadth.
+**Coverage gaps found by this schema, not by eyeballing:** the
+original 15-source pass showed zero coverage for `rdsp` and
+`lira_lrsp`, and `rrif` only folded into the RRSP page. All three
+closed in the breadth-expansion pass below — `rrif` and `rdsp` got
+dedicated primary CRA pages; `lira_lrsp` did not (see "Known gap"
+below, it stayed a gap on purpose rather than being papered over).
+That same pass also surfaced `prpp` (Pooled Registered Pension Plan) —
+a real Canadian registered-account type missing from the original
+`ACCOUNT_TYPES` set entirely — while pulling RRSP subpages; added, since
+the facet claims to be exhaustive of Canada's account types and wasn't.
 
 ### Sanity-check pass (removed / fixed on review)
 
@@ -164,69 +170,91 @@ make what's retrieved more useful," not kept by default:
   retrieval-relevant, but near-zero cost and useful for debugging a
   failed fetch, so they stayed too.
 
-## Primary sources (government official / government-endorsed)
+## Sources
 
-| Source | URL | Topic | License | Fetch method |
-|---|---|---|---|---|
-| CRA (canada.ca) | [TFSA](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account.html) | TFSA rules, contribution room, residency | OGL-Canada | Headless browser (blocked for plain HTTP) |
-| CRA (canada.ca) | [FHSA](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/first-home-savings-account.html) | FHSA eligibility, contribution limits | OGL-Canada | Headless browser |
-| CRA (canada.ca) | [RRSPs and related plans](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/rrsps-related-plans.html) | RRSP setup, contributions, HBP, RRIF | OGL-Canada | Headless browser |
-| CRA (canada.ca) | [RESP](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/registered-education-savings-plans-resps.html) | RESP, CESG, CLB grants | OGL-Canada | Headless browser |
-| CRA (canada.ca) | [Investment income](https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/about-your-tax-return/tax-return/completing-a-tax-return/personal-income/investment-income.html) | Capital gains / dividend taxation basics | OGL-Canada | Headless browser |
-| CRA (canada.ca) | [Income Tax Folio S3-F2-C2](https://www.canada.ca/en/revenue-agency/services/tax/technical-information/income-tax/income-tax-folios-index/series-3-property-investments-savings-plans/series-3-property-investments-savings-plan-folio-2-dividends/income-tax-folio-s3-f2-c2-taxable-dividends-corporations-resident-canada.html) | Technical dividend taxation (dense — good for depth) | OGL-Canada | Headless browser |
-| OSC (Crown agency of Ontario) | [GetSmarterAboutMoney.ca](https://www.getsmarteraboutmoney.ca/) + [Investing Academy](https://academy.getsmarteraboutmoney.ca/) | Structured investing/personal-finance lessons | OSC content | ✅ Direct HTTP — fetches clean (`jurisdiction=none`: general education, not Ontario-specific — see schema notes) |
-| CIRO (national SRO, recognized by the CSA) | [Office of the Investor](https://www.ciro.ca/office-investor) | Dealer regulation, investor protection, complaints, fraud | CIRO content | Headless browser (Cloudflare JS challenge blocks plain HTTP) |
-| AMF (Government of Quebec) | [General public](https://lautorite.qc.ca/en/general-public) | Quebec-specific securities/insurance regulation | AMF content | Headless browser (WAF blocks plain HTTP) |
-| Bank of Canada (Crown corporation) | [Valet API](https://www.bankofcanada.ca/valet/docs) | Interest rates, FX, inflation — macro context | Bank of Canada terms of use | ✅ Direct HTTP — JSON API, no key required |
-| Government of Canada Open Data Portal | [search.open.canada.ca](https://search.open.canada.ca/opendata/) | Bulk datasets — pull in only if a specific tax/investment-relevant dataset is found | OGL-Canada | ✅ Direct HTTP (one redirect) |
+66 pages across 12 active authorities (5-pillar scope — see the main
+[README's Scope section](../README.md#scope)). The full, authoritative
+URL list lives in [ingestion/sources.py](../ingestion/sources.py) —
+one entry per page, tagged with facets — not duplicated here as a
+second hand-maintained table; at this size that would just reintroduce
+the drift risk the schema sanity-check pass eliminated. This table is
+the authority-level summary, generated from the actual fetched
+manifest (not hand-typed):
 
-## Secondary sources (journalism, banks, private entities)
+| Authority | Tier | Jurisdiction | Fetch method | Pages | License |
+|---|---|---|---|---|---|
+| CRA (`cra`) | primary | federal | headless browser | 48 | OGL-Canada |
+| OSC / GetSmarterAboutMoney (`osc_gsam`) | primary | none | direct HTTP | 6 | OSC content |
+| Service Canada / ESDC (`esdc`) | primary | federal | headless browser | 2 | OGL-Canada |
+| CIRO (`ciro`) | primary | national | headless browser | 1 | CIRO content |
+| AMF (`amf`) | primary | qc | headless browser | 1 | AMF content |
+| CIPF (`cipf`) | primary | national | direct HTTP | 1 | CIPF content |
+| CDIC (`cdic`) | primary | federal | direct HTTP | 1 | CDIC content |
+| TD (`td`) | secondary | none | direct HTTP | 2 | TD content |
+| FP Canada (`fpcanada`) | secondary | none | direct HTTP | 1 | FP Canada content |
+| MoneySense (`moneysense`) | secondary | none | direct HTTP | 1 | MoneySense content |
+| RBC (`rbc`) | secondary | none | direct HTTP | 1 | RBC content |
+| Questrade (`questrade`) | secondary | none | direct HTTP | 1 | Questrade content |
 
-Supplementary only — practical "how do I actually do this" framing,
-never authoritative for rules or numbers. Bank sources in particular
-have a direct commercial incentive (each is explaining the account
-type it also sells), so they're tagged with the issuing institution in
-metadata and the prompt should treat them accordingly.
+CIPF/CDIC are industry-funded but classed **primary**, not secondary
+— coverage is a CIRO-membership requirement (CIPF) or a federal Crown
+corporation (CDIC), a mandated protection scheme rather than a
+commercial explainer with a product to sell. Same reasoning as CIRO.
 
-| Source | URL | Topic | Fetch method |
-|---|---|---|---|
-| FP Canada (private nonprofit, CFP-certifying body) | [fpcanada.ca](https://www.fpcanada.ca/) | Consumer "life moment" financial-planning content | ✅ Direct HTTP |
-| MoneySense (commercial media) | [moneysense.ca](https://www.moneysense.ca/) | Canadian personal-finance journalism, FAQ-style | ✅ Direct HTTP |
-| RBC (bank, commercial) | [TFSA page](https://www.rbcroyalbank.com/investments/tfsa.html) | Practical account-opening steps | ✅ Direct HTTP |
-| TD (bank, commercial) | [TFSA page](https://www.td.com/ca/en/personal-banking/personal-investing/products/investment-plans/tfsa) | Practical account-opening steps | ✅ Direct HTTP — note: TD publishes an `LLMS.txt` (`td.com/LLMS.txt`) with AI-crawler guidance; read it before scraping |
-| Questrade (brokerage, commercial) | [Learning centre](https://www.questrade.com/learning) | Practical DIY-investing steps | ✅ Direct HTTP |
+Secondary sources are supplementary only — practical "how do I
+actually do this" framing, never authoritative for rules or numbers.
+Bank sources in particular have a direct commercial incentive (each is
+explaining the account type it also sells). TD additionally publishes
+an `LLMS.txt` (`td.com/LLMS.txt`) with AI-crawler guidance; read it
+before scraping further TD pages.
 
-## Considered and excluded (for now)
+**Known gap, left open rather than papered over:** no clean primary
+(CRA) consumer page exists for LIRA/LRSP — they're governed by
+provincial pension-standards legislation layered on federal RRSP tax
+rules, more fragmented than the other account types. The only source
+found is TD's explainer (secondary tier). This is a real gap in
+primary-source coverage for that account type, not a settled matter.
+
+**Registered but not yet integrated:** `boc` (Bank of Canada) is in
+the authority registry with 0 pages — its Valet API returns JSON, a
+different shape than this HTML-fetch pipeline, and is deliberately
+deferred to a small separate integration rather than forced through
+`fetch.py`.
+
+**Considered and excluded, not just unhandled:**
 
 - **BCFSA / FSRA (Ontario)** — official provincial regulators, but
-  their remit is insurance/mortgage, outside this project's
-  registered-accounts scope. Revisit only if the project scope
-  expands.
-- **StatCan** — official and fetchable, but its content is survey/
-  statistical tables, not Q&A-shaped prose. Better suited to a future
-  monitoring-dashboard stat than to the retrieval corpus.
+  their remit (insurance/mortgage) is explicitly out of scope per the
+  main README's Scope section.
+- **StatCan** — official and fetchable, but survey/statistical tables,
+  not Q&A-shaped prose. Better suited to a future monitoring-dashboard
+  stat than the retrieval corpus.
+- **open.canada.ca** — only worth pulling if a specific tax/investment
+  dataset turns up; none found yet.
 - **Pre-built HuggingFace/Kaggle Q&A datasets** — searched, found
   nothing suitable for this niche. Confirms the corpus needs to be
   built from these sources directly.
 
 ## Fetchability summary
 
-Every primary regulator (CRA, CIRO, AMF) sits behind bot protection
+Every primary *regulator* (CRA, CIRO, AMF) sits behind bot protection
 (Akamai or Cloudflare) even though each `robots.txt` explicitly
 permits crawling — plain HTTP clients get an instant block, a real
-browser session loads the page cleanly. Every other source tested
-fetches directly over plain HTTP. Practical implication for
-`ingestion/`:
+browser session loads the page cleanly. Every other source tested —
+including the two newer primary additions, CIPF and CDIC — fetches
+directly over plain HTTP; regulator status doesn't predict bot
+protection (CIPF/CDIC are as authoritative as CIRO but unprotected).
 
-- **Headless-browser fetch path** (e.g. Playwright) for: CRA, CIRO, AMF
-- **Plain HTTP fetch path** for: OSC/GetSmarterAboutMoney, Bank of
-  Canada, open.canada.ca, FP Canada, MoneySense, RBC, TD, Questrade
+- **Headless-browser fetch path**: CRA, ESDC, CIRO, AMF
+- **Plain HTTP fetch path**: OSC/GetSmarterAboutMoney, CIPF, CDIC, FP
+  Canada, MoneySense, RBC, TD, Questrade
 
 No JS challenge/CAPTCHA was observed on any source (Cloudflare's
 "Just a moment" interstitial cleared automatically in a normal browser
-session), so headless Chromium should be sufficient without a
-CAPTCHA-solving step — add a politeness delay between requests
-regardless, since none of these sites publish a rate limit.
+session), so headless Chromium is sufficient without a CAPTCHA-solving
+step — add a politeness delay between requests regardless, since none
+of these sites publish a rate limit. Confirmed at full scale: all 66
+pages fetched successfully in one run, 0 failures.
 
 ## Freshness
 

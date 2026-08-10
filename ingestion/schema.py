@@ -61,6 +61,11 @@ OGL = "Open Government Licence – Canada"
 # securities regulation actually works.
 SOURCE_AUTHORITY_INFO: dict[str, dict] = {
     "cra":        {"source_name": "CRA",                       "tier": "primary",   "fetch_method": "browser", "license": OGL,                  "jurisdiction": "federal"},
+    # CPP/OAS are administered by Service Canada on behalf of ESDC
+    # (Employment and Social Development Canada), not CRA — a
+    # different federal department, even though it's the same
+    # canada.ca domain. Citing this as "CRA" would misattribute it.
+    "esdc":       {"source_name": "Service Canada / ESDC",     "tier": "primary",   "fetch_method": "browser", "license": OGL,                  "jurisdiction": "federal"},
     "ciro":       {"source_name": "CIRO",                      "tier": "primary",   "fetch_method": "browser", "license": "CIRO content",       "jurisdiction": "national"},
     "amf":        {"source_name": "AMF",                       "tier": "primary",   "fetch_method": "browser", "license": "AMF content",        "jurisdiction": "qc"},
     "boc":        {"source_name": "Bank of Canada",            "tier": "primary",   "fetch_method": "http",    "license": "Bank of Canada terms of use", "jurisdiction": "federal"},
@@ -70,6 +75,13 @@ SOURCE_AUTHORITY_INFO: dict[str, dict] = {
     "rbc":        {"source_name": "RBC",                       "tier": "secondary", "fetch_method": "http",    "license": "RBC content",        "jurisdiction": "none"},
     "td":         {"source_name": "TD",                        "tier": "secondary", "fetch_method": "http",    "license": "TD content",         "jurisdiction": "none"},
     "questrade":  {"source_name": "Questrade",                 "tier": "secondary", "fetch_method": "http",    "license": "Questrade content",  "jurisdiction": "none"},
+    # CIPF/CDIC: industry-funded but government-mandated protection
+    # schemes (CIPF coverage is a CIRO membership requirement; CDIC is
+    # a literal federal Crown corporation) — primary, not secondary,
+    # for the same reason CIRO is primary: mandated authority, not a
+    # commercial explainer with a product to sell.
+    "cipf":       {"source_name": "CIPF",                      "tier": "primary",   "fetch_method": "http",    "license": "CIPF content",       "jurisdiction": "national"},
+    "cdic":       {"source_name": "CDIC",                      "tier": "primary",   "fetch_method": "http",    "license": "CDIC content",       "jurisdiction": "federal"},
 }
 
 JURISDICTIONS = {"federal", "national", "on", "qc", "bc", "none"}
@@ -96,14 +108,19 @@ CONTENT_TYPES = {"conceptual", "numeric_fact", "procedural", "example"}
 # not by convention drift.
 
 ACCOUNT_TYPES = {
-    "tfsa", "rrsp", "rrif", "fhsa", "resp", "rdsp", "lira_lrsp",
+    "tfsa", "rrsp", "rrif", "fhsa", "resp", "rdsp", "lira_lrsp", "prpp",
     "non_registered", "none",
 }
+# "prpp" (Pooled Registered Pension Plan) added on the breadth-expansion
+# pass: found while pulling RRSP subpages, and account_type claims to be
+# exhaustive of Canada's registered-account types — leaving out a real
+# one because it's niche would break that claim.
 
 TAX_CONCEPTS = {
     "capital_gains", "capital_losses", "superficial_loss", "attribution_rules",
     "contribution_room", "over_contribution_penalty", "withholding_tax",
     "tax_deduction", "tax_credit", "dividend_tax_credit", "oas_clawback",
+    "foreign_reporting",  # T1135 / NR4 — a reporting obligation, distinct from withholding_tax (a tax owed)
 }
 
 INVESTMENT_VEHICLES = {

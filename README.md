@@ -1,9 +1,9 @@
-# Canadian Registered Accounts & Investing Assistant
+# Canadian Investing Assistant
 
-A RAG application that answers questions about Canadian registered
-investment accounts (RRSP, TFSA, FHSA, RESP) and related tax rules,
-with a focus on the eligibility and residency details that trip up
-new Canadians and permanent residents.
+A RAG application that answers questions about investing in Canada —
+accounts, instruments, taxation, regulation/investor protection, and
+the residency-specific rules that trip up new Canadians and permanent
+residents.
 
 > ⚠️ **Not financial or tax advice.** This project is for educational
 > purposes only. Answers are generated from public government sources
@@ -16,6 +16,7 @@ Built as the capstone project for the
 ## Table of contents
 
 - [Problem description](#problem-description)
+- [Scope](#scope)
 - [Dataset](#dataset)
 - [Architecture](#architecture)
 - [Evaluation criteria checklist](#evaluation-criteria-checklist)
@@ -25,37 +26,60 @@ Built as the capstone project for the
 
 ## Problem description
 
-Canada offers several tax-advantaged accounts (RRSP, TFSA, FHSA, RESP),
-each with its own contribution limits, withdrawal rules, and —
-critically — eligibility rules tied to residency and immigration
-status. New Canadians and permanent residents in particular struggle
-to find clear, consolidated answers: generic financial advice online
-is often US-centric, and government pages are scattered across
-canada.ca, CRA technical folios, and the FCAC site.
+Investing in Canada is scattered across sources with no single place
+to ask a plain-language question: the accounts you can hold (TFSA,
+RRSP, FHSA, RESP, RDSP, RRIF, LIRA/LRSP), the instruments inside them,
+how they're taxed, who regulates them and what protects your money if
+a dealer or bank fails, and — the part generic financial advice
+usually misses — how residency and immigration status change the
+answer. New Canadians and permanent residents in particular struggle
+to find clear, consolidated answers: generic advice online is often
+US-centric, and government pages are scattered across canada.ca, CIRO,
+the provincial securities regulators, CIPF, and CDIC.
 
-This project builds a RAG assistant over official Canadian government
-sources so users can ask natural-language questions (e.g. *"I landed
-as a PR eight months ago, can I open an FHSA?"*) and get a grounded,
+This project builds a RAG assistant over official and government-
+endorsed Canadian sources so users can ask natural-language questions
+(e.g. *"I landed as a PR eight months ago, can I open an FHSA?"* or
+*"what happens to my TFSA if I move abroad?"*) and get a grounded,
 cited answer instead of having to piece it together themselves.
+
+## Scope
+
+Five pillars, all specifically about **investing** in Canada — not
+general personal finance:
+
+1. **Accounts** — TFSA, RRSP, RRIF, FHSA, RESP, RDSP, LIRA/LRSP, PRPP, non-registered
+2. **Instruments** — stocks, ETFs, mutual funds, bonds, GICs, REITs, options, crypto, and how they trade in Canada specifically
+3. **Taxation** — capital gains/losses, dividend tax credit, attribution/superficial-loss rules, foreign tax credit, foreign property reporting (T1135), US withholding tax inside registered accounts
+4. **Regulation & investor protection** — CIRO, provincial regulators (AMF for Quebec), CIPF (brokerage insolvency), CDIC (deposit/GIC insurance)
+5. **Residency & newcomer-specific rules** — the differentiator: foreign property reporting, first-year tax residency, departure tax, CPP/OAS as they interact with investing decisions
+
+**Explicitly out of scope** — different domains, not just unhandled
+edge cases: budgeting, debt/credit, general insurance (life/auto/
+home), real estate/mortgages as an asset class (FHSA stays in as a
+savings vehicle; rental-property investing doesn't), business/
+corporate tax and incorporation, estate law beyond account-death
+rules, and personalized investment advice or recommendations.
 
 ## Dataset
 
-Sourced from official, Crown-copyright (Open Government Licence –
-Canada) publications:
+Sourced from official government and government-endorsed publications
+— see [data/README.md](data/README.md) for the full, vetted list
+(legitimacy, appropriateness, and tested fetchability per source), the
+primary/secondary trust-tier split, and the schema each page and
+chunk is tagged with. In short:
 
-- [canada.ca](https://www.canada.ca) — RRSP, TFSA, FHSA, RESP guide pages
-- [CRA](https://www.canada.ca/en/revenue-agency.html) — technical
-  folios on investment income, capital gains, attribution rules
-- [FCAC](https://www.canada.ca/en/financial-consumer-agency.html) —
-  consumer-facing investing/banking education
+- **Primary** (7 authorities, 60 pages): CRA, CIRO, AMF, Service
+  Canada/ESDC, OSC/GetSmarterAboutMoney, CIPF, CDIC
+- **Secondary** (5 authorities, 6 pages, supplementary only): FP
+  Canada, MoneySense, RBC, TD, Questrade
 
-See [docs/setup.md](docs/setup.md) for how the dataset is fetched and
-[data/README.md](data/README.md) for details on what's included.
+See [docs/setup.md](docs/setup.md) for how the dataset is fetched.
 
 ## Architecture
 
 ```
-canada.ca / CRA / FCAC docs
+CRA / CIRO / AMF / ESDC / OSC / CIPF / CDIC + secondary sources
         │
         ▼
  dlt ingestion pipeline (fetch → parse → chunk → load)

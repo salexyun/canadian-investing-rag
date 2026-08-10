@@ -19,7 +19,7 @@ cp .env.example .env
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-playwright install chromium   # needed for the CRA/CIRO/AMF fetch path — see below
+playwright install chromium   # needed for the CRA/ESDC/CIRO/AMF fetch path — see below
 ```
 
 ## 2. Fetch the dataset
@@ -31,11 +31,13 @@ playwright install chromium   # needed for the CRA/CIRO/AMF fetch path — see b
 page's self-reported last-modified date where available).
 
 It uses two fetch paths, chosen per source (see data/README.md for
-why): a headless-browser path (Playwright) for CRA, CIRO, and AMF,
-which block plain HTTP clients even though their `robots.txt` allows
-crawling; and a plain, self-identifying HTTP client for everything
-else (OSC/GetSmarterAboutMoney, FP Canada, MoneySense, RBC, TD,
-Questrade).
+why): a headless-browser path (Playwright) for CRA, ESDC, CIRO, and
+AMF, which block plain HTTP clients even though their `robots.txt`
+allows crawling; and a plain, self-identifying HTTP client for
+everything else (OSC/GetSmarterAboutMoney, CIPF, CDIC, FP Canada,
+MoneySense, RBC, TD, Questrade) — regulator status doesn't predict bot
+protection; CIPF/CDIC are just as authoritative as CIRO but fetch
+directly.
 
 ```bash
 python ingestion/fetch.py                       # fetch everything
