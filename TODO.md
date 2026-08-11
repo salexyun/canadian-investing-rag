@@ -27,8 +27,8 @@ tool while a session is active.
 
 ## Next
 
-- [ ] Set up Langfuse Cloud (free tier) + SDK integration — instrumenting the now-working RAG flow, not building blind
-- [ ] Evaluate >=2 LLM approaches for main RAG generation (`gpt-5.6-terra` vs `gpt-5.6-sol`) via Langfuse's LLM-as-judge (`gpt-5.6-terra` as judge) — pick the best *(rubric: LLM evaluation)*
+- [ ] Evaluate >=2 LLM approaches for main RAG generation (`eval/evaluate_llm.py`: `gpt-5.6-terra` vs `gpt-5.6-sol`, judge=`gpt-5.5`) — pick the best *(rubric: LLM evaluation)*. Reordered ahead of Langfuse setup — same reasoning as building the RAG flow before Langfuse: this decision needs to happen now with real data, not wait on an external account-creation step; Langfuse gets wired in afterward for ongoing observability of whichever model wins, not as a precondition for deciding. Judge deliberately NOT `terra` (a candidate) — that would risk self-preference bias (a model rating its own outputs more favourably); using `gpt-5.5` instead.
+- [ ] Set up Langfuse Cloud (free tier) + SDK integration — instrumenting the now-decided RAG flow, not building blind
 - [ ] Build the Streamlit interface, with citations + disclaimer (`app/`) *(rubric: Interface)*
 - [ ] Wire user feedback (thumbs up/down) to Langfuse's scores API + confirm/extend its dashboard to 5+ charts (`monitoring/`) *(rubric: Monitoring)*
 - [ ] Flesh out `docker-compose.yml` to run end-to-end — app + Qdrant only; no self-hosted Postgres/Grafana, Langfuse Cloud is external *(rubric: Containerization)*

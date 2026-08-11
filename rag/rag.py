@@ -20,7 +20,10 @@ from textwrap import dedent
 
 from openai import OpenAI
 
-DEFAULT_MODEL = "gpt-5.6-terra"  # placeholder until the LLM evaluation step picks terra vs sol
+DEFAULT_MODEL = "gpt-5.6-terra"  # eval/evaluate_llm.py: terra vs sol, judge=gpt-5.5 (not terra/sol,
+# to avoid self-preference bias). sol scored marginally higher (0.950 vs 0.933) but the entire gap
+# was one hard edge-case question out of 30 -- not a robust difference -- while terra costs ~2.5x
+# less on both input and output. Chose terra: cost should decide it when performance doesn't.
 
 INSTRUCTIONS = dedent("""
     You are an assistant that helps people understand investing in
