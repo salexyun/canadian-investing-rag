@@ -11,6 +11,10 @@ dependencies = [
     "playwright>=1.62.0",
     "streamlit>=1.59.2",
     "sentence-transformers>=5.7.0",
+    "torch>=2.9.0",  # direct dep, not just via sentence-transformers -- [tool.uv.sources]'s
+    # marker-based index override below only takes effect for a package that's a direct
+    # requirement, not a transitive one (confirmed: relocking with torch left implicit
+    # still resolved it from PyPI's default CUDA-bundled wheel, ignoring the override).
     "qdrant-client>=1.19.0",
     "rank-bm25>=0.2.2",
     "openai>=2.53.0",
@@ -21,3 +25,17 @@ dependencies = [
 
 [dependency-groups]
 dev = []
+
+# torch's default PyPI wheel on Linux drags in the full CUDA/nvidia stack
+# (~8GB) even though this project only does small-model CPU inference
+# (bge-small embeddings, bge-reranker-base) -- no GPU anywhere it runs,
+# dev machine or container. Found by actually building the Docker image
+# and checking its size, not assumed. macOS is untouched by this: PyPI's
+# mac wheels never bundled CUDA in the first place (no CUDA on macOS).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "platform_system == 'Linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

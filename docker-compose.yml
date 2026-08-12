@@ -1,5 +1,4 @@
-# Skeleton — service definitions get filled in as each component is built.
-# Target end state: app + vector DB, runnable with a single `docker compose up`.
+# app + vector DB, runnable with a single `docker compose up --build`.
 #
 # No self-hosted Postgres/Grafana here on purpose: monitoring/observability
 # is Langfuse Cloud (external, managed, free tier) — see TODO.md and
@@ -16,6 +15,14 @@ services:
       - "8501:8501"
     env_file:
       - .env
+    environment:
+      # Overrides .env's QDRANT_URL. .env is shared with local (non-Docker)
+      # dev, where Qdrant really is reachable at localhost:6333 -- but
+      # inside this container "localhost" means the container itself, not
+      # the vector-db service next to it. Compose applies `environment`
+      # after `env_file`, so this wins for the containerized app only,
+      # without having to fork .env into a docker-only copy.
+      - QDRANT_URL=http://vector-db:6333
     depends_on:
       - vector-db
     volumes:

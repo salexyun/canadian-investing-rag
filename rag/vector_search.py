@@ -8,13 +8,20 @@ drift from what the eval numbers actually measured.
 
 from __future__ import annotations
 
+import os
+
 from qdrant_client import QdrantClient
 from sentence_transformers import SentenceTransformer
 
 EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 COLLECTION_NAME = "canadian_investing_chunks"
-QDRANT_URL = "http://localhost:6333"
+# Was hardcoded to localhost -- worked for local dev (where Qdrant really is
+# on localhost) but would silently break in Docker, where "localhost" means
+# the container itself, not the vector-db service. ingestion/load_vector_store.py
+# already read this from the environment correctly; this didn't, until caught
+# while actually testing containerization instead of assuming it would work.
+QDRANT_URL = os.getenv("QDRANT_URL", "http://localhost:6333")
 
 
 class VectorSearch:

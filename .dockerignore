@@ -1,0 +1,15 @@
+# Host virtualenv -- built for the host OS/arch (macOS here), not the
+# container's. `uv sync` inside the image builds its own; copying this in
+# would also balloon the build context by >1GB for nothing.
+.venv
+
+# Secrets -- supplied at runtime via docker-compose's env_file, never
+# baked into an image layer.
+.env
+
+.git
+.gitignore
+__pycache__
+*.pyc
+.DS_Store
+.claude
