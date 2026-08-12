@@ -18,10 +18,11 @@ from __future__ import annotations
 
 from bm25_search import BM25Search
 from hybrid_search import HybridSearch
-from openai import OpenAI
+from langfuse.openai import OpenAI  # drop-in wrapper -- traces every .responses.create/.parse call to Langfuse
 from query_rewrite import rewrite_query
 from reranker import rerank
 from vector_search import VectorSearch
+from langfuse import observe
 
 CANDIDATE_K = 20  # candidates handed to the cross-encoder before trimming to top_k
 
@@ -39,6 +40,7 @@ class Retriever:
         hybrid = HybridSearch(bm25, vector)
         return cls(hybrid)
 
+    @observe(name="retrieve")
     def search(self, query: str, top_k: int = 5) -> list[dict]:
         rewritten = rewrite_query(query, self.llm_client)
         candidates = self.hybrid.search(rewritten, top_k=self.candidate_k)

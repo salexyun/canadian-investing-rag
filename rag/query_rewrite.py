@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 
-from openai import OpenAI
+from langfuse.openai import OpenAI  # drop-in wrapper -- traces every .responses.create/.parse call to Langfuse
 
 MODEL = "gpt-5.6-luna"
 

@@ -18,7 +18,8 @@ from __future__ import annotations
 
 from textwrap import dedent
 
-from openai import OpenAI
+from langfuse import observe
+from langfuse.openai import OpenAI  # drop-in wrapper -- traces every .responses.create/.parse call to Langfuse
 
 DEFAULT_MODEL = "gpt-5.6-terra"  # eval/evaluate_llm.py: terra vs sol, judge=gpt-5.5 (not terra/sol,
 # to avoid self-preference bias). sol scored marginally higher (0.950 vs 0.933) but the entire gap
@@ -106,7 +107,13 @@ class RAG:
         )
         return response.output_text
 
+    @observe(name="rag-answer")
     def rag(self, query: str, top_k: int = 5) -> str:
+        """Top-level entry point -- the @observe here is what groups the
+        query-rewrite call (inside self.search -> Retriever.search),
+        retrieval, and the generation call (self.llm) into one Langfuse
+        trace per user question, instead of showing up as disconnected
+        generations."""
         results = self.search(query, top_k=top_k)
         prompt = self.build_prompt(query, results)
         return self.llm(prompt)

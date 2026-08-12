@@ -16,6 +16,7 @@ dependencies = [
     "openai>=2.53.0",
     "python-dotenv>=1.2.2",
     "tqdm>=4.70.0",
+    "langfuse>=4.14.4",
 ]
 
 [dependency-groups]
