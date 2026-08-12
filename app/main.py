@@ -87,6 +87,15 @@ if st.session_state.history:
             seen_urls.add(s["url"])
             unique_sources.append(s)
 
+    # Display-only grouping: primary sources listed before secondary,
+    # relevance order preserved within each tier (Python's sort is
+    # stable). This does NOT touch retrieval ranking or what the LLM
+    # sees as context -- both stay purely relevance-ranked, matching
+    # what eval/evaluate_retrieval.py and evaluate_llm.py actually
+    # measured. Re-sorting by tier there would silently deploy a
+    # system different from the one that was evaluated.
+    unique_sources.sort(key=lambda s: 0 if s["tier"] == "primary" else 1)
+
     with st.expander(f"Sources ({len(unique_sources)})"):
         for s in unique_sources:
             tier = s["tier"].upper()

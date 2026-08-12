@@ -60,7 +60,11 @@ INSTRUCTIONS = dedent("""
     number so the user knows when that figure currently applies (in
     case it has since changed).
 
-    Cite the source(s) you used by URL at the end of your answer.
+    Do not append your own source list or URLs to your answer — the
+    interface displays the actual retrieved sources separately,
+    correctly tiered and dated, and a second self-generated list would
+    be redundant and error-prone (you could transcribe a URL wrong, or
+    omit one the interface would otherwise show correctly).
 """).strip()
 
 PROMPT_TEMPLATE = dedent("""
