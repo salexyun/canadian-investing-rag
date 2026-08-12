@@ -16,9 +16,10 @@ would just sit unused in the payload.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from textwrap import dedent
 
-from langfuse import observe
+from langfuse import get_client, observe
 from langfuse.openai import OpenAI  # drop-in wrapper -- traces every .responses.create/.parse call to Langfuse
 
 DEFAULT_MODEL = "gpt-5.6-terra"  # eval/evaluate_llm.py: terra vs sol, judge=gpt-5.5 (not terra/sol,
@@ -70,6 +71,13 @@ PROMPT_TEMPLATE = dedent("""
 """).strip()
 
 
+@dataclass
+class RAGResult:
+    answer: str
+    trace_id: str | None  # for scoring this exact answer later (e.g. user feedback) -- see app/main.py
+    sources: list[dict] = field(default_factory=list)  # the retrieved chunks, for a UI citation list distinct from the inline citations already in `answer`
+
+
 class RAG:
     def __init__(self, retriever, llm_client: OpenAI | None = None, model: str = DEFAULT_MODEL,
                  instructions: str = INSTRUCTIONS, prompt_template: str = PROMPT_TEMPLATE):
@@ -108,15 +116,25 @@ class RAG:
         return response.output_text
 
     @observe(name="rag-answer")
-    def rag(self, query: str, top_k: int = 5) -> str:
+    def rag(self, query: str, top_k: int = 5) -> RAGResult:
         """Top-level entry point -- the @observe here is what groups the
         query-rewrite call (inside self.search -> Retriever.search),
         retrieval, and the generation call (self.llm) into one Langfuse
         trace per user question, instead of showing up as disconnected
-        generations."""
+        generations.
+
+        Returns the trace_id alongside the answer specifically so a UI
+        can score *this* answer later (thumbs up/down) -- Streamlit
+        reruns the whole script on every interaction, so by the time a
+        feedback button is clicked there's no "current trace" context
+        left; the id has to be captured now and carried in session
+        state until the button click, then used with create_score(),
+        not score_current_trace()."""
         results = self.search(query, top_k=top_k)
         prompt = self.build_prompt(query, results)
-        return self.llm(prompt)
+        answer = self.llm(prompt)
+        trace_id = get_client().get_current_trace_id()
+        return RAGResult(answer=answer, trace_id=trace_id, sources=results)
 
 
 if __name__ == "__main__":
@@ -131,4 +149,4 @@ if __name__ == "__main__":
         "who protects my money if my investment broker goes bankrupt",
     ]:
         print(f"Q: {q}")
-        print(f"A: {rag.rag(q)}\n")
+        print(f"A: {rag.rag(q).answer}\n")

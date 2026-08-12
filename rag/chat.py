@@ -34,8 +34,8 @@ def main() -> None:
         if not question or question.lower() in ("quit", "exit"):
             break
         print("\n...\n")
-        answer = rag.rag(question)
-        print(f"Assistant: {answer}\n")
+        result = rag.rag(question)
+        print(f"Assistant: {result.answer}\n")
 
 
 if __name__ == "__main__":
