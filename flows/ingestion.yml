@@ -1,0 +1,99 @@
+id: canadian_investing_ingestion
+namespace: canadian-investing-rag
+
+description: |
+  Fetch -> chunk -> load: the same three scripts that can be run
+  directly (`uv run python ingestion/fetch.py`, etc.) via
+  `docs/setup.md`, orchestrated here instead of run by hand. Each task
+  runs the ingestion image (../ingestion/Dockerfile — has the
+  Playwright/Chromium binary the serving app image deliberately
+  doesn't) as a sibling container via Kestra's Docker task runner, on
+  the same docker-compose network as `vector-db` so the load step can
+  reach it by service name.
+
+  Build the image once before running this flow:
+    docker compose build ingestion
+  (it's a build-only service in docker-compose.yml — never `up`'d
+  directly, only referenced here by tag.)
+
+inputs:
+  - id: repo_root
+    type: STRING
+    defaults: /Users/alexyun/canadian-investing-rag
+    description: |
+      Host filesystem path to the repo clone. Must be a *host* path,
+      not a path inside the Kestra container: Kestra launches sibling
+      containers via the host's mounted docker.sock (Docker-outside-
+      of-Docker), so bind-mount sources are resolved by the host
+      Docker daemon, not from Kestra's own container filesystem.
+      Change this if the repo lives somewhere else on the machine
+      running `docker compose up`.
+  - id: only_ids
+    type: STRING
+    required: false
+    description: |
+      Space-separated source ids to restrict fetch+chunk to (passed
+      through to both scripts' own --only flag, e.g. "cra_tfsa
+      cra_fhsa"). Leave empty for a real full run. Exists mainly to
+      verify the flow itself quickly against a couple of pages without
+      re-running all ~93 -- fetch alone takes over an hour full-corpus
+      (Playwright page loads + politeness delays), which is the
+      pipeline doing its job correctly, not something to routinely
+      wait out just to confirm the plumbing works.
+
+tasks:
+  - id: fetch
+    type: io.kestra.plugin.scripts.shell.Commands
+    containerImage: canadian-investing-rag-ingestion:latest
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      pullPolicy: NEVER # locally built, not pushed to any registry
+      networkMode: canadian-investing-rag_default # compose's auto-named default network -- lets `load` below resolve `vector-db`
+      volumes:
+        - "{{ inputs.repo_root }}/data:/app/data"
+    commands:
+      - cd /app && uv run python ingestion/fetch.py {% if inputs.only_ids %}--only {{ inputs.only_ids }}{% endif %}
+
+  - id: chunk
+    type: io.kestra.plugin.scripts.shell.Commands
+    containerImage: canadian-investing-rag-ingestion:latest
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      pullPolicy: NEVER
+      networkMode: canadian-investing-rag_default
+      volumes:
+        - "{{ inputs.repo_root }}/data:/app/data"
+    commands:
+      - cd /app && uv run python ingestion/pipeline.py {% if inputs.only_ids %}--only {{ inputs.only_ids }}{% endif %}
+
+  - id: load
+    type: io.kestra.plugin.scripts.shell.Commands
+    containerImage: canadian-investing-rag-ingestion:latest
+    taskRunner:
+      type: io.kestra.plugin.scripts.runner.docker.Docker
+      pullPolicy: NEVER
+      networkMode: canadian-investing-rag_default
+      volumes:
+        - "{{ inputs.repo_root }}/data:/app/data"
+    env:
+      # container-network hostname -- same override reasoning as app's
+      # docker-compose.yml entry, "localhost" would mean this task's own
+      # container. `env` belongs on the Commands task itself, not
+      # taskRunner -- confirmed the hard way: `kestra flow namespace
+      # update` rejected it there with a real schema-validation error
+      # ("Unrecognized field env", 24 known Docker-taskRunner properties
+      # listed, env not among them).
+      QDRANT_URL: http://vector-db:6333
+    commands:
+      - cd /app && uv run python ingestion/load_vector_store.py
+
+triggers:
+  # Disabled by default: government source pages don't change often
+  # enough to justify unattended live fetches against CRA/CIRO/AMF on a
+  # schedule nobody asked for. Real orchestration semantics (this is a
+  # genuine cron trigger, not just documentation of one) are there to
+  # enable on purpose, not to run silently in the background.
+  - id: weekly
+    type: io.kestra.plugin.core.trigger.Schedule
+    cron: "0 6 * * 1" # Monday 06:00
+    disabled: true

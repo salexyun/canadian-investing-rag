@@ -35,5 +35,49 @@ services:
     volumes:
       - qdrant_storage:/qdrant/storage
 
+  # Build-only: never `up`'d as a running container. Kestra's Docker
+  # task runner (flows/ingestion.yml) launches its own sibling
+  # containers from this image by tag -- this service definition exists
+  # solely so `docker compose build ingestion` produces that image
+  # under a predictable name. Separate from `app`'s image because it
+  # additionally bundles a Chromium binary (ingestion/Dockerfile) for
+  # the CRA/CIRO/AMF fetch path -- the serving app never needs that,
+  # and baking it in there would undo the image-size work in `app`.
+  ingestion:
+    build:
+      context: .
+      dockerfile: ingestion/Dockerfile
+    image: canadian-investing-rag-ingestion:latest
+    profiles: ["build-only"]
+
+  # Orchestrates the ingestion pipeline (flows/ingestion.yml) instead of
+  # running fetch/chunk/load by hand. Standalone mode (`server local`)
+  # with its embedded H2 database -- no separate Postgres service, unlike
+  # Kestra's own docker-compose docs default, for the same reason
+  # Langfuse/Grafana aren't self-hosted here: right-sized for a
+  # course-project's traffic/data volume, not production HA. UI/API at
+  # http://localhost:8080.
+  kestra:
+    image: kestra/kestra:latest
+    command: server local
+    user: root # matches Kestra's own single-container docs -- the image's
+    # default non-root user can't write kestra_db's embedded H2 file
+    # (confirmed: omitting this produced a real AccessDeniedException
+    # on /app/data/database.mv.db at startup, not a hypothetical concern)
+    ports:
+      - "8080:8080"
+    volumes:
+      - kestra_storage:/app/storage
+      - kestra_db:/app/data
+      # Docker-outside-of-Docker: lets Kestra launch the `ingestion`
+      # image as sibling containers on the host's Docker daemon rather
+      # than needing Docker-in-Docker. This is why flows/ingestion.yml's
+      # bind-mount paths must be host paths, not paths inside this
+      # container.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./flows:/app/flows
+
 volumes:
   qdrant_storage:
+  kestra_storage:
+  kestra_db:
