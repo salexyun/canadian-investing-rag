@@ -1,21 +1,20 @@
-"""Seed list of pages to ingest.
+"""List of pages to ingest.
 
-This is a starting set — one or more pages per source in
-data/README.md, enough to exercise both fetch paths and both trust
-tiers. Extend it as coverage needs grow — see data/README.md for the
-full vetting (legitimacy, appropriateness, fetchability) behind each
-entry, and ingestion/schema.py for what source_authority, jurisdiction,
-and the facets mean and their allowed values.
+See data/README.md for the full vetting (legitimacy, appropriateness,
+fetchability) behind each entry, and ingestion/schema.py for what
+source_authority, jurisdiction, and the facets mean and their allowed
+values.
 
 Every entry is validated against ingestion/schema.py's controlled
 vocabularies at import time — an unregistered authority, an invalid
 jurisdiction, or a typo'd facet value fails immediately instead of
 silently corrupting trust-tiering downstream.
 
-Coverage note: tagging these against the closed ACCOUNT_TYPES set
-surfaces a real gap — nothing here touches RDSP or LIRA/LRSP, and RRIF
-only appears folded into the RRSP page rather than as its own account
-type. Worth filling when we expand breadth.
+Coverage against the closed ACCOUNT_TYPES set is complete as of the
+LIRA/LRSP fix (see that section below) — every account type now has at
+least one source. Extend deliberately as real gaps turn up, not by
+convention drift; each addition below documents the specific gap it
+closes.
 """
 
 from dataclasses import dataclass
@@ -196,6 +195,22 @@ SOURCES: list[Source] = [
         "https://www.questrade.com/learning",
         "questrade", "Practical DIY-investing steps",
         Facets("none", investment_vehicles=("stocks", "etfs", "options", "crypto")),
+    ),
+    # Added on the source-list sanity check: RBC + TD alone left 4 of the
+    # "Big Six" banks (~85% of Canadian banking assets combined)
+    # unrepresented, and missed Wealthsimple entirely -- the platform most
+    # aligned with this project's own newcomer-focused audience.
+    make_source(
+        "wealthsimple_tfsa",
+        "https://www.wealthsimple.com/en-ca/learn/what-is-tfsa",
+        "wealthsimple", "Practical TFSA explainer",
+        Facets("tfsa", actions=("opening_account", "contributing")),
+    ),
+    make_source(
+        "qtrade_tfsa",
+        "https://www.qtrade.ca/en/investor/education/tfsa-trading.html",
+        "qtrade", "Practical TFSA explainer",
+        Facets("tfsa", actions=("opening_account", "contributing")),
     ),
 
     # =========================================================================
@@ -451,14 +466,31 @@ SOURCES: list[Source] = [
         Facets("rdsp", actions=("contributing",)),
     ),
 
-    # --- Pillar 1: LIRA/LRSP — no clean CRA consumer page found (see data/README.md);
-    # this is a real coverage gap, flagged rather than papered over. TD's explainer
-    # is the only source found and is secondary-tier, not a primary-source substitute.
+    # --- Pillar 1: LIRA/LRSP — no clean *CRA* consumer page exists (LIRAs/LRSPs
+    # are governed by provincial pension legislation, not federal tax rules CRA
+    # publishes on), so TD's explainer stayed the only source for a while. Closed
+    # properly on the source-list sanity check: FSRA and Retraite Québec are the
+    # actual primary regulators for this account type (Ontario/Quebec pension
+    # standards legislation), found by checking who regulates *pensions*, not
+    # just who was already in the registry — the original "no primary source"
+    # framing was really "no primary CRA source", a narrower claim than it read as.
     make_source(
         "td_lira_lrsp",
         "https://www.td.com/ca/en/investing/direct-investing/registered-accounts/lira-lrsp",
-        "td", "LIRA/LRSP explained (secondary — no primary CRA consumer page found)",
+        "td", "LIRA/LRSP explained (secondary, practical framing)",
         Facets("lira_lrsp", actions=("transferring", "withdrawing")),
+    ),
+    make_source(
+        "fsra_lira",
+        "https://www.fsrao.ca/consumers/pensions/events-may-affect-your-pension/pension-unlocking-non-hardship",
+        "fsra", "LIRA/LIF non-hardship unlocking rules under Ontario's Pension Benefits Act",
+        Facets("lira_lrsp", actions=("withdrawing",)),
+    ),
+    make_source(
+        "retraitequebec_lirsp",
+        "https://www.rrq.gouv.qc.ca/en/programmes/rcr/cri_frv/Pages/CRI_FRV.aspx",
+        "retraitequebec", "LIRA/LRSP (LRSP is Quebec's name for it) under the Supplemental Pension Plans Act",
+        Facets("lira_lrsp", actions=("transferring",)),
     ),
 
     # --- Pillar 2: investment vehicles/instruments themselves — previously almost

@@ -74,6 +74,23 @@ SOURCE_AUTHORITY_INFO: dict[str, dict] = {
     # commercial explainer with a product to sell.
     "cipf":       {"source_name": "CIPF",                      "tier": "primary",   "fetch_method": "http",    "license": "CIPF content",       "jurisdiction": "national"},
     "cdic":       {"source_name": "CDIC",                      "tier": "primary",   "fetch_method": "http",    "license": "CDIC content",       "jurisdiction": "federal"},
+    # FSRA/Retraite Quebec: added specifically to close the LIRA/LRSP
+    # primary-source gap (see data/README.md's "Known gap") -- provincial
+    # pension regulators, not the insurance/mortgage remit that got
+    # BCFSA/FSRA excluded earlier; that exclusion was too broad, this is
+    # the part of FSRA's mandate that's actually in scope. Both need the
+    # browser fetch path: FSRA 403s plain HTTP (bot-blocked, like CRA),
+    # Retraite Quebec has a genuine server-side TLS certificate signature
+    # failure that both curl and requests reject but Chromium tolerates
+    # -- confirmed via both clients, not assumed to be "just a block".
+    "fsra":            {"source_name": "FSRA",            "tier": "primary", "fetch_method": "browser", "license": "FSRA content",            "jurisdiction": "on"},
+    "retraitequebec":  {"source_name": "Retraite Québec",  "tier": "primary", "fetch_method": "browser", "license": "Retraite Québec content", "jurisdiction": "qc"},
+    # Wealthsimple/Qtrade: added after a source-list sanity check found
+    # only 2 of the "Big Six" banks (~85% of Canadian banking assets)
+    # represented, and Wealthsimple -- the platform most aligned with
+    # this project's own newcomer-focused audience -- missing entirely.
+    "wealthsimple":    {"source_name": "Wealthsimple",     "tier": "secondary", "fetch_method": "http", "license": "Wealthsimple content", "jurisdiction": "universal"},
+    "qtrade":          {"source_name": "Qtrade",           "tier": "secondary", "fetch_method": "http", "license": "Qtrade content",        "jurisdiction": "universal"},
 }
 
 JURISDICTIONS = {"federal", "national", "on", "qc", "bc", "universal"}

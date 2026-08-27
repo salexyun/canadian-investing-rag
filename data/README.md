@@ -174,7 +174,7 @@ make what's retrieved more useful," not kept by default:
 
 ## Sources
 
-93 pages across 12 active authorities (5-pillar scope — see the main
+97 pages across 16 active authorities (5-pillar scope — see the main
 [README's Scope section](../README.md#scope)). The full, authoritative
 URL list lives in [ingestion/sources.py](../ingestion/sources.py) —
 one entry per page, tagged with facets — not duplicated here as a
@@ -186,17 +186,21 @@ manifest (not hand-typed):
 | Authority | Tier | Jurisdiction | Fetch method | Pages | License |
 |---|---|---|---|---|---|
 | CRA (`cra`) | primary | federal | headless browser | 76 | OGL-Canada |
-| OSC / GetSmarterAboutMoney (`osc_gsam`) | primary | none | direct HTTP | 3 | OSC content |
+| OSC / GetSmarterAboutMoney (`osc_gsam`) | primary | universal | direct HTTP | 3 | OSC content |
 | Service Canada / ESDC (`esdc`) | primary | federal | headless browser | 2 | OGL-Canada |
 | CIRO (`ciro`) | primary | national | headless browser | 1 | CIRO content |
 | AMF (`amf`) | primary | qc | headless browser | 1 | AMF content |
 | CIPF (`cipf`) | primary | national | direct HTTP | 2 | CIPF content |
 | CDIC (`cdic`) | primary | federal | direct HTTP | 2 | CDIC content |
-| TD (`td`) | secondary | none | direct HTTP | 2 | TD content |
-| FP Canada (`fpcanada`) | secondary | none | direct HTTP | 1 | FP Canada content |
-| MoneySense (`moneysense`) | secondary | none | direct HTTP | 1 | MoneySense content |
-| RBC (`rbc`) | secondary | none | direct HTTP | 1 | RBC content |
-| Questrade (`questrade`) | secondary | none | direct HTTP | 1 | Questrade content |
+| FSRA (`fsra`) | primary | on | headless browser | 1 | FSRA content |
+| Retraite Québec (`retraitequebec`) | primary | qc | headless browser | 1 | Retraite Québec content |
+| TD (`td`) | secondary | universal | direct HTTP | 2 | TD content |
+| FP Canada (`fpcanada`) | secondary | universal | direct HTTP | 1 | FP Canada content |
+| MoneySense (`moneysense`) | secondary | universal | direct HTTP | 1 | MoneySense content |
+| RBC (`rbc`) | secondary | universal | direct HTTP | 1 | RBC content |
+| Questrade (`questrade`) | secondary | universal | direct HTTP | 1 | Questrade content |
+| Wealthsimple (`wealthsimple`) | secondary | universal | direct HTTP | 1 | Wealthsimple content |
+| Qtrade (`qtrade`) | secondary | universal | direct HTTP | 1 | Qtrade content |
 
 ## Content-quality audit
 
@@ -255,12 +259,19 @@ explaining the account type it also sells). TD additionally publishes
 an `LLMS.txt` (`td.com/LLMS.txt`) with AI-crawler guidance; read it
 before scraping further TD pages.
 
-**Known gap, left open rather than papered over:** no clean primary
-(CRA) consumer page exists for LIRA/LRSP — they're governed by
+**Known gap, substantially closed on a later sanity check:** no clean
+*CRA* consumer page exists for LIRA/LRSP — they're governed by
 provincial pension-standards legislation layered on federal RRSP tax
-rules, more fragmented than the other account types. The only source
-found is TD's explainer (secondary tier). This is a real gap in
-primary-source coverage for that account type, not a settled matter.
+rules, not federal tax rules CRA itself publishes on. TD's explainer
+(secondary tier) was the only source for a while, until a source-list
+sanity check found the actual primary regulators by asking who
+regulates *pensions*, not just checking who was already registered:
+FSRA (`fsra`, Ontario's Pension Benefits Act) and Retraite Québec
+(`retraitequebec`, Quebec's Supplemental Pension Plans Act) now cover
+the two largest provinces by population. Still a real, smaller gap for
+the remaining provinces (each has its own pension-standards regulator)
+— not claiming full 13-province coverage, just that "no primary source
+at all" is no longer accurate.
 
 **Registered but not yet integrated:** `boc` (Bank of Canada) is in
 the authority registry with 0 pages — its Valet API returns JSON, a
@@ -270,9 +281,13 @@ deferred to a small separate integration rather than forced through
 
 **Considered and excluded, not just unhandled:**
 
-- **BCFSA / FSRA (Ontario)** — official provincial regulators, but
-  their remit (insurance/mortgage) is explicitly out of scope per the
-  main README's Scope section.
+- **BCFSA** — an official provincial regulator, but its remit
+  (insurance/mortgage) is explicitly out of scope per the main
+  README's Scope section. (FSRA, Ontario's equivalent body, was
+  excluded on the same reasoning originally — too broadly: FSRA also
+  regulates *pensions*, which is in scope, so it's now included above
+  for exactly that part of its mandate, not the insurance/mortgage
+  part.)
 - **StatCan** — official and fetchable, but survey/statistical tables,
   not Q&A-shaped prose. Better suited to a future monitoring-dashboard
   stat than the retrieval corpus.
@@ -344,13 +359,31 @@ bugs it took to get here:
   audit; a page's `default_facets` are already precise at chunk
   granularity.
 
-**Result**: 93 pages -> 1,052 chunks (991 primary / 61 secondary).
-Content type: 603 conceptual, 313 example, 74 procedural, 62
-numeric_fact. 15 chunks carry a confirmed `effective_date`. 5 pages
-produce zero chunks, all confirmed correct: 4 pure-hub CRA pages whose
+**Result**: 97 pages -> 1,084 chunks (1,001 primary / 83 secondary).
+Content type: 626 conceptual, 313 example, 75 procedural, 70
+numeric_fact. 16 chunks carry a confirmed `effective_date`. 6 pages
+produce zero chunks. 5 confirmed correct: 4 pure-hub CRA pages whose
 real content lives in leaf pages fetched separately (see Content-
 quality audit), plus `cipf_about`, whose only content turned out to be
 the cookie-consent banner once stripped.
+
+**The 6th, `cra_tfsa_contributing`, is a real bug, not confirmed-correct
+like the other 5** — found while updating these numbers for the
+source-list expansion below, not yet fixed. Its fetched HTML has an
+empty content component (`<div class="cmp-text" id="...">` with no
+children) even though the page visibly has real content in a browser —
+looks like CRA's page-builder loads that component's content via JS
+after Playwright's `networkidle` wait already resolved. Two sibling
+pages, `cra_tfsa_owing_tax` and `cra_tfsa_death`, show the identical
+empty-div pattern.
+
+A second, separate bug turned up alongside it: `cra_tfsa_contributing_before`
+has substantial real content (15,297 chars after boilerplate-stripping)
+but still produces zero chunks — `split_into_sections()` returns no
+sections despite real prose being present in the fetched HTML. Root
+cause not yet found; different from the empty-div issue above, since
+the content genuinely is there. Both logged here rather than left for
+the next full-corpus refetch to silently paper over or reproduce.
 
 ## Fetchability summary
 
