@@ -1,29 +1,21 @@
-"""Record schemas for the ingestion pipeline — two layers, deliberately kept separate:
+"""Record schemas for the ingestion pipeline: FetchedPage and Chunk.
 
-- :class:`FetchedPage` — one per fetched page (``data/raw/manifest.jsonl``).
-  Provenance and source-authority context only: what did we fetch, from
-  whom, under what jurisdiction, when, and is it still there. Written by
-  ``ingestion/fetch.py`` today.
+FetchedPage is one record per fetched page (data/raw/manifest.jsonl),
+written by fetch.py. It's provenance only: what was fetched, from whom,
+under what jurisdiction, and when.
 
-- :class:`Chunk` — one per retrievable unit, several per page
-  (``data/processed/chunks.jsonl``, once ``ingestion/pipeline.py``
-  exists). Trust/freshness/facet metadata that genuinely varies *within*
-  a page — a TFSA page's contribution-limit sentence is a
-  ``numeric_fact`` with a real ``effective_date``; the same page's "what
-  is a TFSA" paragraph is ``conceptual`` and evergreen. Collapsing these
-  onto the page record would lose exactly that distinction, so don't.
+Chunk is one record per retrievable unit, several per page
+(data/processed/chunks.jsonl), written by pipeline.py. It carries the
+trust/freshness metadata that varies *within* a page — e.g., a TFSA
+page's contribution-limit sentence is a numeric_fact with a real
+effective_date, while its "what is a TFSA" paragraph is conceptual and
+evergreen. A Chunk inherits source_authority/tier/jurisdiction/url from
+its parent page rather than re-deriving them, since those are page-level
+facts, not per-chunk judgment calls.
 
-A Chunk inherits `source_authority` / `tier` / `jurisdiction` / `url`
-from its parent Page rather than re-deriving them — those are page-level
-facts, not per-chunk judgment calls. `facets` starts as the page's
-`default_facets` and gets refined per chunk once real chunking exists;
-this file draws the boundary, not the chunker itself.
-
-Controlled vocabularies live here too, and are meant to be enforced
-(via ``validate_*``) rather than just documented in a comment — the
-whole point of this schema is that a typo'd jurisdiction or an
-unregistered source authority fails loudly instead of silently
-corrupting trust-tiering downstream.
+Controlled vocabularies also live here and are enforced via validate_*,
+so a typo'd jurisdiction or an unregistered source authority fails
+loudly instead of silently corrupting trust-tiering downstream.
 """
 
 from __future__ import annotations
@@ -52,7 +44,7 @@ OGL = "Open Government Licence – Canada"
 # but GetSmarterAboutMoney's actual content (investing basics,
 # diversification) isn't Ontario-specific — tagging it "on" would risk
 # a jurisdiction filter wrongly excluding it for a BC or Quebec user,
-# so its default is "none" (applies nationally) rather than "on".
+# so its default is "universal" (applies nationally) rather than "on".
 #
 # "national" (CIRO) is kept distinct from "federal" (CRA, Bank of
 # Canada): CIRO is a self-regulatory body operating under provincial
@@ -69,12 +61,12 @@ SOURCE_AUTHORITY_INFO: dict[str, dict] = {
     "ciro":       {"source_name": "CIRO",                      "tier": "primary",   "fetch_method": "browser", "license": "CIRO content",       "jurisdiction": "national"},
     "amf":        {"source_name": "AMF",                       "tier": "primary",   "fetch_method": "browser", "license": "AMF content",        "jurisdiction": "qc"},
     "boc":        {"source_name": "Bank of Canada",            "tier": "primary",   "fetch_method": "http",    "license": "Bank of Canada terms of use", "jurisdiction": "federal"},
-    "osc_gsam":   {"source_name": "OSC / GetSmarterAboutMoney", "tier": "primary",  "fetch_method": "http",    "license": "OSC content",        "jurisdiction": "none"},
-    "fpcanada":   {"source_name": "FP Canada",                 "tier": "secondary", "fetch_method": "http",    "license": "FP Canada content",  "jurisdiction": "none"},
-    "moneysense": {"source_name": "MoneySense",                "tier": "secondary", "fetch_method": "http",    "license": "MoneySense content", "jurisdiction": "none"},
-    "rbc":        {"source_name": "RBC",                       "tier": "secondary", "fetch_method": "http",    "license": "RBC content",        "jurisdiction": "none"},
-    "td":         {"source_name": "TD",                        "tier": "secondary", "fetch_method": "http",    "license": "TD content",         "jurisdiction": "none"},
-    "questrade":  {"source_name": "Questrade",                 "tier": "secondary", "fetch_method": "http",    "license": "Questrade content",  "jurisdiction": "none"},
+    "osc_gsam":   {"source_name": "OSC / GetSmarterAboutMoney", "tier": "primary",  "fetch_method": "http",    "license": "OSC content",        "jurisdiction": "universal"},
+    "fpcanada":   {"source_name": "FP Canada",                 "tier": "secondary", "fetch_method": "http",    "license": "FP Canada content",  "jurisdiction": "universal"},
+    "moneysense": {"source_name": "MoneySense",                "tier": "secondary", "fetch_method": "http",    "license": "MoneySense content", "jurisdiction": "universal"},
+    "rbc":        {"source_name": "RBC",                       "tier": "secondary", "fetch_method": "http",    "license": "RBC content",        "jurisdiction": "universal"},
+    "td":         {"source_name": "TD",                        "tier": "secondary", "fetch_method": "http",    "license": "TD content",         "jurisdiction": "universal"},
+    "questrade":  {"source_name": "Questrade",                 "tier": "secondary", "fetch_method": "http",    "license": "Questrade content",  "jurisdiction": "universal"},
     # CIPF/CDIC: industry-funded but government-mandated protection
     # schemes (CIPF coverage is a CIRO membership requirement; CDIC is
     # a literal federal Crown corporation) — primary, not secondary,
@@ -84,7 +76,7 @@ SOURCE_AUTHORITY_INFO: dict[str, dict] = {
     "cdic":       {"source_name": "CDIC",                      "tier": "primary",   "fetch_method": "http",    "license": "CDIC content",       "jurisdiction": "federal"},
 }
 
-JURISDICTIONS = {"federal", "national", "on", "qc", "bc", "none"}
+JURISDICTIONS = {"federal", "national", "on", "qc", "bc", "universal"}
 
 # Chunk-level only. Drives citation/trust behaviour in the prompt —
 # numeric_fact chunks need the tightest primary-source + freshness

@@ -46,7 +46,7 @@ display. A sanity pass (below) removed one that didn't.
 **Page** (`FetchedPage`, written today by `ingestion/fetch.py` to
 `data/raw/manifest.jsonl`) — provenance and source-authority context:
 `id`, `url`, `source_name`, `source_authority` (normalized slug, e.g.
-`cra`), `jurisdiction` (`federal | national | on | qc | bc | none`),
+`cra`), `jurisdiction` (`federal | national | on | qc | bc | universal`),
 `tier` (`primary | secondary`), `fetch_method`, `license`, `topic`,
 `default_facets`, `fetched_at`, `page_last_updated` (best-effort, from
 the page's own `dcterms.modified` metadata where present),
@@ -150,8 +150,10 @@ make what's retrieved more useful," not kept by default:
   OSC/GetSmarterAboutMoney was tagged `on` because OSC is Ontario's
   regulator — but the actual content (investing basics, diversification)
   isn't Ontario-specific. Left as `on`, a jurisdiction filter could
-  wrongly exclude it for a BC/Quebec user. Now defaults to `none`
-  (applies nationally) via the registry.
+  wrongly exclude it for a BC/Quebec user. Now defaults to `universal`
+  (applies nationally) via the registry — renamed from the original
+  `none`, which read as "no jurisdiction data" rather than its actual
+  meaning, "applies to every jurisdiction."
 - **Collapsed real redundancy into one registry.** Checked whether
   `source_name`/`tier`/`license`/`fetch_method` ever varied within a
   `source_authority` across the fetched manifest — they didn't, in any

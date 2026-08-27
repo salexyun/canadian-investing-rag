@@ -149,7 +149,7 @@ SOURCES: list[Source] = [
     ),
 
     # --- Primary: OSC — Ontario regulator, fetches directly over plain HTTP.
-    # jurisdiction left at its registry default ("none"): this is general
+    # jurisdiction left at its registry default ("universal"): this is general
     # investing education, not Ontario-specific rules, despite the publisher.
     #
     # academy.getsmarteraboutmoney.ca (the whole subdomain, not just specific
