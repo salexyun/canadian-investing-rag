@@ -3,8 +3,8 @@ namespace: canadian-investing-rag
 
 description: |
   Fetch -> chunk -> load: the same three scripts that can be run
-  directly (`uv run python ingestion/fetch.py`, etc.) via
-  `docs/setup.md`, orchestrated here instead of run by hand. Each task
+  directly (`uv run python ingestion/fetch.py`, etc.) via the main
+  README's Setup section, orchestrated here instead of run by hand. Each task
   runs the ingestion image (../ingestion/Dockerfile — has the
   Playwright/Chromium binary the serving app image deliberately
   doesn't) as a sibling container via Kestra's Docker task runner, on

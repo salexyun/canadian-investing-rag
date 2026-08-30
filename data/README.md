@@ -1,8 +1,8 @@
 # Data
 
 `raw/` and `processed/` are gitignored (populated by the ingestion
-pipeline, not committed) — see [ingestion/](../ingestion/) and
-[docs/setup.md](../docs/setup.md).
+pipeline, not committed) — see [ingestion/](../ingestion/) and the
+main [README's Setup section](../README.md#setup).
 
 All sources below were verified 2026-08-09: checked `robots.txt`,
 test-fetched with a plain HTTP client (`curl`), and — where that
