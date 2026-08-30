@@ -622,6 +622,16 @@ SOURCES: list[Source] = [
         "cra", "Tax on TFSA contributions made while a non-resident",
         Facets("tfsa", tax_concepts=("withholding_tax",), special_situations=("non_resident",)),
     ),
+    # Found the same way as the other owing-tax subpages: drilled into the
+    # cra_tfsa_owing_tax hub's actual link structure (see data/README.md's
+    # Chunking section) rather than assuming the hub's other 3 children were
+    # the whole list -- this 4th one was missed the first time through.
+    make_source(
+        "cra_tfsa_owing_tax_non_permitted_investment",
+        "https://www.canada.ca/en/revenue-agency/services/tax/individuals/topics/tax-free-savings-account/owing-tax/non-permitted-investment.html",
+        "cra", "Tax on TFSA holdings that aren't a qualified/permitted investment",
+        Facets("tfsa", tax_concepts=("withholding_tax",)),
+    ),
 
     # --- TFSA: contributing hub's remaining real subpages (calculate-room and
     # overcontribute were already fetched directly in the original breadth pass) ---

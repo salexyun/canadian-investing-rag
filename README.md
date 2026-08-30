@@ -105,7 +105,7 @@ chunk is tagged with. In short:
   answer a rules or numbers question on their own): TD, FP Canada,
   MoneySense, RBC, Questrade, Wealthsimple, Qtrade
 
-**97 pages → 1,084 chunks** (1,001 primary / 83 secondary). Full
+**98 pages → 1,098 chunks** (1,015 primary / 83 secondary). Full
 per-authority breakdown, the content-quality audit that found and
 fixed the "CRA hub page" problem, and the chunking bugs it took to get
 a clean corpus all live in [data/README.md](data/README.md).

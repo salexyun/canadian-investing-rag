@@ -174,7 +174,7 @@ make what's retrieved more useful," not kept by default:
 
 ## Sources
 
-97 pages across 16 active authorities (5-pillar scope — see the main
+98 pages across 16 active authorities (5-pillar scope — see the main
 [README's Scope section](../README.md#scope)). The full, authoritative
 URL list lives in [ingestion/sources.py](../ingestion/sources.py) —
 one entry per page, tagged with facets — not duplicated here as a
@@ -185,7 +185,7 @@ manifest (not hand-typed):
 
 | Authority | Tier | Jurisdiction | Fetch method | Pages | License |
 |---|---|---|---|---|---|
-| CRA (`cra`) | primary | federal | headless browser | 76 | OGL-Canada |
+| CRA (`cra`) | primary | federal | headless browser | 77 | OGL-Canada |
 | OSC / GetSmarterAboutMoney (`osc_gsam`) | primary | universal | direct HTTP | 3 | OSC content |
 | Service Canada / ESDC (`esdc`) | primary | federal | headless browser | 2 | OGL-Canada |
 | CIRO (`ciro`) | primary | national | headless browser | 1 | CIRO content |
@@ -359,31 +359,43 @@ bugs it took to get here:
   audit; a page's `default_facets` are already precise at chunk
   granularity.
 
-**Result**: 97 pages -> 1,084 chunks (1,001 primary / 83 secondary).
-Content type: 626 conceptual, 313 example, 75 procedural, 70
-numeric_fact. 16 chunks carry a confirmed `effective_date`. 6 pages
-produce zero chunks. 5 confirmed correct: 4 pure-hub CRA pages whose
-real content lives in leaf pages fetched separately (see Content-
-quality audit), plus `cipf_about`, whose only content turned out to be
-the cookie-consent banner once stripped.
+**Result**: 98 pages -> 1,098 chunks (1,015 primary / 83 secondary).
+Content type: 634 conceptual, 313 example, 77 procedural, 74
+numeric_fact. 16 chunks carry a confirmed `effective_date`.
 
-**The 6th, `cra_tfsa_contributing`, is a real bug, not confirmed-correct
-like the other 5** — found while updating these numbers for the
-source-list expansion below, not yet fixed. Its fetched HTML has an
-empty content component (`<div class="cmp-text" id="...">` with no
-children) even though the page visibly has real content in a browser —
-looks like CRA's page-builder loads that component's content via JS
-after Playwright's `networkidle` wait already resolved. Two sibling
-pages, `cra_tfsa_owing_tax` and `cra_tfsa_death`, show the identical
-empty-div pattern.
+**5 pages produce zero chunks, all confirmed correct** — a prior pass
+had flagged two of these as real bugs; both turned out to be
+misdiagnoses, corrected once actually investigated rather than taken
+at face value:
 
-A second, separate bug turned up alongside it: `cra_tfsa_contributing_before`
-has substantial real content (15,297 chars after boilerplate-stripping)
-but still produces zero chunks — `split_into_sections()` returns no
-sections despite real prose being present in the fetched HTML. Root
-cause not yet found; different from the empty-div issue above, since
-the content genuinely is there. Both logged here rather than left for
-the next full-corpus refetch to silently paper over or reproduce.
+- `cra_tfsa_contributing`, `cra_tfsa_owing_tax`, `cra_tfsa_death` are
+  genuine hub pages — not, as first suspected, pages whose content
+  loads via JS after Playwright's `networkidle` wait resolves. Their
+  fetched HTML was inspected directly: each `<main>` contains only a
+  `gc-srvinfo` link-list block (an already-registered boilerplate
+  class, correctly stripped) pointing to real child pages, plus for
+  two of them a small `alert`-class blurb (also boilerplate). Every
+  linked child is separately registered and fetched — e.g.
+  `cra_tfsa_owing_tax` links to `owing-tax/pay.html`,
+  `owing-tax/excess.html`, `owing-tax/non-resident.html`, and
+  `owing-tax/non-permitted-investment.html`, all four now present in
+  `sources.py` (the fourth was the one real, small gap this check
+  turned up — added and fetched).
+- `cra_rrsp_contributing_prpp` and `cipf_about` were already confirmed
+  correct before this pass (hub-under-a-hub; cookie-consent banner
+  only, respectively) — unchanged.
+- `cra_tfsa_contributing_before` was logged as a *third*, unexplained
+  bug (`split_into_sections()` returning zero sections despite real
+  content) — also a misdiagnosis, but for a different reason: the
+  underlying chunker bug had already been fixed by the time this was
+  re-investigated (most likely by the flattened-document-order walking
+  fix described above), and `chunks.jsonl` simply hadn't been
+  regenerated since. Re-run fresh, the page produces 23 real chunks —
+  and all 23 turn out to be exact-text duplicates of CRA's
+  shared-glossary content already indexed under other pages (see
+  dedup, above), so it correctly nets to zero once deduped rather than
+  from ever failing to chunk. Confirmed by diffing its chunk text
+  against the deduped corpus, not assumed.
 
 ## Fetchability summary
 
