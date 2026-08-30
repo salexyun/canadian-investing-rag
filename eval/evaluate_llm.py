@@ -1,9 +1,8 @@
 """Evaluate LLM approaches for the main RAG answer generation.
 
-Compares gpt-5.6-terra vs gpt-5.6-sol as the generation model, using the
-LLM-as-judge pattern from the coursework's judge.py: structured output,
-a 3-way relevance verdict (RELEVANT/PARTLY_RELEVANT/NON_RELEVANT) plus
-an explanation.
+Compares gpt-5.6-terra vs gpt-5.6-sol as the generation model, using a
+standard LLM-as-judge pattern: structured output, a 3-way relevance
+verdict (RELEVANT/PARTLY_RELEVANT/NON_RELEVANT) plus an explanation.
 
 Standalone, not dependent on Langfuse being set up — same reasoning as
 building the retrieval eval harness independently: this decision needs

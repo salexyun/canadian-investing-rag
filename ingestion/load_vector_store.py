@@ -5,8 +5,8 @@ each chunk's text, and upserts into Qdrant with the full chunk record as
 payload — so a search result is self-contained (citation, tier, facets,
 content_type) without a second lookup.
 
-Model: BAAI/bge-small-en-v1.5 (384-dim), chosen over the course's
-all-MiniLM-L6-v2 for stronger retrieval-benchmark performance at a
+Model: BAAI/bge-small-en-v1.5 (384-dim), chosen over the more commonly
+used all-MiniLM-L6-v2 for stronger retrieval-benchmark performance at a
 comparable size. Local/free — no per-embedding API cost, which matters
 here since retrieval eval means re-embedding queries repeatedly while
 tuning.

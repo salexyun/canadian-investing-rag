@@ -1,9 +1,9 @@
 """Evaluate retrieval approaches: BM25 vs vector vs hybrid (RRF) vs reranked variants.
 
 Runs the 112-question ground-truth set (eval/retrieval_ground_truth.jsonl)
-against all five methods and reports hit-rate/MRR — the exact metrics
-and formulas the coursework's Module 4 uses — both overall and split by
-`phrasing_style` (jargon vs plain_language), since the whole reason for
+against all five methods and reports hit-rate/MRR — standard retrieval
+metrics — both overall and split by `phrasing_style` (jargon vs
+plain_language), since the whole reason for
 building multiple methods instead of just picking one was the hypothesis
 that BM25 and vector search fail on different query styles. An aggregate
 score would hide exactly the effect this is supposed to measure.

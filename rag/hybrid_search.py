@@ -1,6 +1,6 @@
 """Hybrid search — Reciprocal Rank Fusion of BM25 + vector search.
 
-Same technique and formula as the coursework's Module 2 homework (Q6):
+Standard RRF formula:
     score[doc] += 1 / (k + rank)   for each result list the doc appears in
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 from bm25_search import BM25Search
 from vector_search import VectorSearch
 
-RRF_K = 60  # same constant the coursework used
+RRF_K = 60  # the standard default for this formula
 DEFAULT_CANDIDATE_K = 10  # candidates each underlying method contributes before fusion
 
 

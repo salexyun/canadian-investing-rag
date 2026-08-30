@@ -2,9 +2,8 @@
 
 Checked first, not assumed: querying the Langfuse API directly
 (lf.api.unstable.dashboards.list()) showed zero dashboards exist for a
-fresh project — there's no auto-created default with 5+ charts waiting
-for us. The rubric's "dashboard with at least 5 charts" has to actually
-be built.
+fresh project — there's no auto-created default waiting for us. A real
+monitoring dashboard has to actually be built.
 
 Built as code rather than clicked together in the UI, matching how
 everything else in this project is built (reproducible, not a
@@ -19,9 +18,8 @@ by direct API calls against a real project, not guessed from docs —
 several plausible-looking names (`cost`, `model`, `time_to_first_token`)
 turned out to be wrong and only the actually-valid ones are used here.
 
-Six widgets, comfortably past the rubric's 5-chart minimum, each
-answering a real question about the deployed system rather than
-padding for the count:
+Six widgets, each answering a real question about the deployed system
+rather than padding for the count:
 1. Total LLM calls (volume)
 2. Cost over time
 3. Latency (p50) over time

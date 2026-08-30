@@ -1,7 +1,7 @@
 """The RAG class — retrieval + prompt construction + LLM call.
 
-Composition-based (a retriever passed into the constructor), not the
-coursework's 3-level RAGBase/RAGVector/RAGPgVector subclass hierarchy —
+Composition-based (a retriever passed into the constructor), not a
+3-level RAGBase/RAGVector/RAGPgVector subclass hierarchy —
 a deliberate simplification (see TODO.md's "Decisions" section): we
 don't swap retrieval backends at runtime in production, the retrieval
 eval already picked one winner (query rewrite -> hybrid RRF -> rerank,

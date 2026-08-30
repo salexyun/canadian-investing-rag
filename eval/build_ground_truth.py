@@ -1,8 +1,8 @@
 """Build the retrieval evaluation ground-truth set.
 
-Generates synthetic questions per chunk via LLM structured output — the
-technique the coursework's Module 4 teaches (per-document ground truth,
-not hand-written), extended one step for this project: two questions per
+Generates synthetic questions per chunk via LLM structured output — a
+standard retrieval-eval technique (per-document ground truth, not
+hand-written), extended one step for this project: two questions per
 sampled chunk, deliberately different styles:
 
 - jargon_question: as someone who already knows Canadian investing

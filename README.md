@@ -10,9 +10,6 @@ residents.
 > and may be incomplete or out of date. Consult a licensed advisor or
 > the CRA directly before making financial decisions.
 
-Built as the capstone project for the
-[DataTalks.Club LLM Zoomcamp](https://github.com/DataTalksClub/llm-zoomcamp).
-
 ## Table of contents
 
 - [Problem description](#problem-description)
@@ -23,7 +20,6 @@ Built as the capstone project for the
 - [Usage](#usage)
 - [Evaluation](#evaluation)
 - [Monitoring](#monitoring)
-- [Evaluation criteria checklist](#evaluation-criteria-checklist)
 - [Project structure](#project-structure)
 - [License](#license)
 
@@ -178,8 +174,8 @@ protection and need a real headless-browser session, not just a plain
 HTTP request — see [data/README.md](data/README.md#fetchability-summary)).
 
 **Or run them orchestrated, via Kestra** (`flows/ingestion.yml`) —
-this is how the rubric's "automated ingestion with a special tool"
-criterion is met, not just documentation of intent:
+real automated orchestration with retries, logging, and a run history,
+not just three scripts chained by hand:
 
 ```bash
 docker compose build ingestion         # image with the Playwright/Chromium binary
@@ -294,24 +290,6 @@ reflexively as a checklist.
 - **Dashboard** (`monitoring/build_dashboard.py`, built as code): 6
   charts — total LLM calls, cost over time, latency (p50) over time,
   token usage over time, calls by model, average user feedback score.
-
-## Evaluation criteria checklist
-
-Tracking against the LLM Zoomcamp project rubric:
-
-- [x] Problem description
-- [x] Retrieval flow (knowledge base + LLM)
-- [x] Retrieval evaluation (6 approaches compared)
-- [x] LLM evaluation (2 approaches compared)
-- [x] Interface (Streamlit)
-- [x] Ingestion pipeline (automated, Kestra)
-- [x] Monitoring (feedback + Langfuse dashboard, 6 charts)
-- [x] Containerization (full docker-compose)
-- [x] Reproducibility (pinned deps via `uv.lock`, clear docs)
-- [x] Best practices: hybrid search
-- [x] Best practices: document reranking
-- [x] Best practices: query rewriting
-- [ ] Bonus: cloud deployment
 
 ## Project structure
 

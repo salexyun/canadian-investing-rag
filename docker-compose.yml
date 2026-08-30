@@ -4,7 +4,7 @@
 # is Langfuse Cloud (external, managed, free tier) — see TODO.md and
 # data/README.md for why. Self-hosting Langfuse's own stack would mean
 # 6 more services (Postgres + ClickHouse + Redis + MinIO + web + worker,
-# ~4 cores/16GB recommended) for a course-project traffic volume; the
+# ~4 cores/16GB recommended) for this project's actual traffic volume; the
 # same reasoning that lets us call OpenAI's API instead of self-hosting
 # an LLM applies here.
 
@@ -55,7 +55,7 @@ services:
   # with its embedded H2 database -- no separate Postgres service, unlike
   # Kestra's own docker-compose docs default, for the same reason
   # Langfuse/Grafana aren't self-hosted here: right-sized for a
-  # course-project's traffic/data volume, not production HA. UI/API at
+  # this project's actual traffic/data volume, not production HA. UI/API at
   # http://localhost:8080.
   kestra:
     image: kestra/kestra:latest
