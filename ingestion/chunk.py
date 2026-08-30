@@ -31,8 +31,8 @@ Strategy (see data/README.md for the reasoning):
   audit pass).
 
 Usage:
-    python ingestion/pipeline.py
-    python ingestion/pipeline.py --only cra_tfsa_what cra_tfsa_calculate_room
+    python ingestion/chunk.py
+    python ingestion/chunk.py --only cra_tfsa_what cra_tfsa_calculate_room
 """
 
 from __future__ import annotations

@@ -66,8 +66,8 @@ can override, since it means "what this content applies to" and that
 can genuinely differ from the publisher's usual scope (see the
 osc_gsam fix below).
 
-**Chunk** (`Chunk`, drafted now, written once `ingestion/pipeline.py`
-exists) — one per retrievable unit, several per page. Inherits
+**Chunk** (`Chunk`, written by `ingestion/chunk.py`) — one per
+retrievable unit, several per page. Inherits
 `url` / `source_authority` / `tier` / `jurisdiction` from its parent
 page rather than re-deriving them, then adds what's genuinely
 per-chunk: `content_type` (`conceptual | numeric_fact | procedural |
@@ -299,7 +299,7 @@ deferred to a small separate integration rather than forced through
 
 ## Chunking
 
-`ingestion/pipeline.py` reads `data/raw/manifest.jsonl`, chunks each
+`ingestion/chunk.py` reads `data/raw/manifest.jsonl`, chunks each
 page's raw HTML, and writes `data/processed/chunks.jsonl` — one
 `Chunk` record per line (see Schema above). Strategy and the concrete
 bugs it took to get here:

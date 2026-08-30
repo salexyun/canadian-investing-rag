@@ -61,7 +61,7 @@ class BM25Search:
     @classmethod
     def build(cls, chunks_path: Path = CHUNKS_PATH) -> "BM25Search":
         if not chunks_path.exists():
-            raise SystemExit(f"No chunks at {chunks_path} — run ingestion/pipeline.py first.")
+            raise SystemExit(f"No chunks at {chunks_path} — run ingestion/chunk.py first.")
         chunks = [json.loads(line) for line in chunks_path.read_text(encoding="utf-8").splitlines() if line.strip()]
         tokenized = [tokenize(c["text"]) for c in chunks]
         bm25 = BM25Okapi(tokenized)

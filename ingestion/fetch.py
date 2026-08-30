@@ -14,9 +14,9 @@ Two fetch paths, per source (see data/README.md for why):
   self-identifying HTTP client.
 
 This is deliberately just the *fetch* step — raw HTML in, manifest
-out. Chunking and loading into the knowledge base is a separate stage
-(``ingestion/pipeline.py``, not yet implemented) that reads this
-manifest.
+out. Chunking and loading into the knowledge base are separate stages
+(``ingestion/chunk.py``, ``ingestion/load_vector_store.py``) that read
+this manifest.
 
 Usage:
     python ingestion/fetch.py

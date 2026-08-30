@@ -1,6 +1,6 @@
 """Embed step of the ingestion pipeline.
 
-Reads ``data/processed/chunks.jsonl`` (written by ``pipeline.py``), embeds
+Reads ``data/processed/chunks.jsonl`` (written by ``chunk.py``), embeds
 each chunk's text, and upserts into Qdrant with the full chunk record as
 payload — so a search result is self-contained (citation, tier, facets,
 content_type) without a second lookup.
@@ -63,7 +63,7 @@ def chunk_point_id(chunk_id: str) -> str:
 
 def load_chunks() -> list[dict]:
     if not CHUNKS_PATH.exists():
-        raise SystemExit(f"No chunks at {CHUNKS_PATH} — run pipeline.py first.")
+        raise SystemExit(f"No chunks at {CHUNKS_PATH} — run chunk.py first.")
     return [json.loads(line) for line in CHUNKS_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 

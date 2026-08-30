@@ -64,7 +64,7 @@ tasks:
       volumes:
         - "{{ inputs.repo_root }}/data:/app/data"
     commands:
-      - cd /app && uv run python ingestion/pipeline.py {% if inputs.only_ids %}--only {{ inputs.only_ids }}{% endif %}
+      - cd /app && uv run python ingestion/chunk.py {% if inputs.only_ids %}--only {{ inputs.only_ids }}{% endif %}
 
   - id: load
     type: io.kestra.plugin.scripts.shell.Commands

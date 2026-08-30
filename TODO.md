@@ -12,7 +12,7 @@ tool while a session is active.
 - [x] Design ingestion schema — Page + Chunk layers, Facets, enforced vocabularies (`ingestion/schema.py`)
 - [x] Build fetch pipeline and fetch full corpus — 93 pages, 0 errors (`ingestion/fetch.py`)
 - [x] Content-quality audit — fixed the CRA hub-page problem, dropped unfetchable sources
-- [x] Build chunking pipeline — 1,052 chunks, content_type/effective_date tagging, dedup (`ingestion/pipeline.py`)
+- [x] Build chunking pipeline — 1,052 chunks, content_type/effective_date tagging, dedup (`ingestion/chunk.py`)
 - [x] Migrate to uv for env/package management — `pyproject.toml` + `uv.lock`, replaced pip + manually-created venv
 - [x] Embed chunks and load into Qdrant — `BAAI/bge-small-en-v1.5`, 1,052 points, verified against real queries (`ingestion/load_vector_store.py`)
 - [x] Set up BM25 keyword index — `rank-bm25` over the same chunk text (`rag/bm25_search.py`); found concrete divergence evidence against vector search (see below)

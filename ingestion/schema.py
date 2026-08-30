@@ -5,7 +5,7 @@ written by fetch.py. It's provenance only: what was fetched, from whom,
 under what jurisdiction, and when.
 
 Chunk is one record per retrievable unit, several per page
-(data/processed/chunks.jsonl), written by pipeline.py. It carries the
+(data/processed/chunks.jsonl), written by chunk.py. It carries the
 trust/freshness metadata that varies *within* a page — e.g., a TFSA
 page's contribution-limit sentence is a numeric_fact with a real
 effective_date, while its "what is a TFSA" paragraph is conceptual and
@@ -226,7 +226,7 @@ class FetchedPage:
         return d
 
 
-# --- Chunk layer (draft — ingestion/pipeline.py doesn't exist yet) ------------
+# --- Chunk layer (written by ingestion/chunk.py) ------------------------------
 
 
 @dataclass

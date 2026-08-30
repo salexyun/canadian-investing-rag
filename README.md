@@ -162,7 +162,7 @@ can be run directly:
 
 ```bash
 uv run python ingestion/fetch.py            # data/raw/manifest.jsonl
-uv run python ingestion/pipeline.py         # data/processed/chunks.jsonl
+uv run python ingestion/chunk.py            # data/processed/chunks.jsonl
 uv run python ingestion/load_vector_store.py   # embeds + upserts into Qdrant
 ```
 
