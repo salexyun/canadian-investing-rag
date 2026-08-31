@@ -1,8 +1,8 @@
 # app + vector DB, runnable with a single `docker compose up --build`.
 #
 # No self-hosted Postgres/Grafana here on purpose: monitoring/observability
-# is Langfuse Cloud (external, managed, free tier) — see TODO.md and
-# data/README.md for why. Self-hosting Langfuse's own stack would mean
+# is Langfuse Cloud (external, managed, free tier) — see README.md's
+# Monitoring section for why. Self-hosting Langfuse's own stack would mean
 # 6 more services (Postgres + ClickHouse + Redis + MinIO + web + worker,
 # ~4 cores/16GB recommended) for this project's actual traffic volume; the
 # same reasoning that lets us call OpenAI's API instead of self-hosting

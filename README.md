@@ -87,6 +87,12 @@ CRA / CIRO / AMF / ESDC / OSC / CIPF / CDIC / FSRA / Retraite Québec + secondar
 Every stage past "knowledge base" is a real, evaluated decision, not the obvious
 default — see [Evaluation](#evaluation) for the numbers that justify hybrid search, reranking, and query rewriting, and why retrieval and generation each landed on the model/approach they did.
 
+`rag/rag.py`'s `RAG` class is composition-based (a retriever passed
+into the constructor) rather than a class hierarchy with a subclass
+per retrieval backend — retrieval backends aren't swapped at runtime
+in production, the evaluation above already picked one winner, so
+there's nothing left to subclass for.
+
 ## Dataset
 
 Sourced from official government and government-endorsed publications
@@ -271,6 +277,12 @@ a broad quality difference — not a robust signal at this sample size.
 `terra` costs ~2.5x less on both input and output tokens; cost decides
 it when performance is statistically indistinguishable.
 
+Different model per task, not one model everywhere: bulk/simple tasks
+that need no reasoning depth (ground-truth generation, query
+rewriting) use `gpt-5.6-luna`, the cheapest current tier — the main
+generation model above and the judge model are the only two chosen
+empirically rather than by default.
+
 ### Best practices implemented
 
 - **Hybrid search** — Reciprocal Rank Fusion of BM25 + vector search (`rag/hybrid_search.py`)
@@ -291,6 +303,16 @@ reflexively as a checklist.
 - **Dashboard** (`monitoring/build_dashboard.py`, built as code): 6
   charts — total LLM calls, cost over time, latency (p50) over time,
   token usage over time, calls by model, average user feedback score.
+
+Langfuse Cloud (free tier) over a self-hosted Grafana+Postgres stack
+or self-hosted Langfuse: self-hosted Langfuse is a 6-service stack
+(Postgres + ClickHouse + Redis + MinIO + web + worker) — too heavy for
+this project's actual traffic alongside Qdrant and the app itself.
+Cloud free tier gets the same SDK/tracing/eval/dashboard features
+without managing a database — same reasoning as calling the OpenAI API
+instead of self-hosting an LLM. Arize Phoenix was also a strong fit
+(retrieval-eval templates, embedding visualization) but not used here,
+a deliberate choice rather than an oversight.
 
 ## Project structure
 

@@ -2,7 +2,7 @@
 
 Composition-based (a retriever passed into the constructor), not a
 3-level RAGBase/RAGVector/RAGPgVector subclass hierarchy —
-a deliberate simplification (see TODO.md's "Decisions" section): we
+a deliberate simplification (see README.md's Architecture section): we
 don't swap retrieval backends at runtime in production, the retrieval
 eval already picked one winner (query rewrite -> hybrid RRF -> rerank,
 rag/retriever.py), so there's nothing left to subclass for.

@@ -31,7 +31,7 @@ estimate). Chosen deliberately for this task specifically: simple
 structured-output paraphrasing, ~50 one-off calls, no deep reasoning
 needed. Other LLM calls in this project (main RAG generation, LLM-judge
 eval) use different, more capable models chosen for what those tasks
-actually need — see TODO.md's model-selection notes.
+actually need — see README.md's LLM evaluation section.
 
 Usage:
     python eval/build_ground_truth.py

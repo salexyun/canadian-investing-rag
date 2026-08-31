@@ -5,9 +5,9 @@ winner from eval/evaluate_retrieval.py's comparison of 6 methods (bm25,
 vector, hybrid, vector_rerank, hybrid_rerank, hybrid_rerank_rewrite).
 Query rewriting was the single largest jump in the whole investigation —
 plain-language hit-rate went 0.571 -> 0.804 — worth the extra LLM call
-per query. See TODO.md for the full numbers and the one honest
-tradeoff (rewriting is very slightly worse on already-precise jargon
-queries; the net gain heavily outweighs it).
+per query. See README.md's Evaluation section for the full numbers and
+the one honest tradeoff (rewriting is very slightly worse on
+already-precise jargon queries; the net gain heavily outweighs it).
 
 This module owns constructing the whole retriever stack (BM25 index +
 vector search + Qdrant client + reranker) so callers (the RAG class,
