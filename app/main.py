@@ -43,11 +43,11 @@ def get_rag() -> RAG:
 
 st.title("🍁 Canadian Investing Assistant")
 st.caption(
-    "Accounts (TFSA, RRSP, FHSA, RESP, RDSP, RRIF, LIRA/LRSP, PRPP), taxation, "
-    "regulation, and how residency status changes the rules."
+    "For any Canadian investor, from someone opening their first account "
+    "to someone who's been investing for a while."
 )
 st.warning(
-    "⚠️ **Not financial or tax advice.** This is an educational project. Answers are "
+    "**Not financial or tax advice.** This is an educational project. Answers are "
     "generated from public government and government-endorsed sources and may be "
     "incomplete or out of date. Consult a licensed advisor or the CRA before making "
     "financial decisions.",

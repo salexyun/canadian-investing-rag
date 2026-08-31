@@ -1,11 +1,11 @@
 # Canadian Investing Assistant
 
-A RAG application that answers questions about investing in Canada — the accounts you can hold, the instruments inside them, how they're taxed, who regulates them, and how residency status changes the answer for anyone it applies to. For any Canadian investor, from someone opening their first TFSA to someone who's held one for a decade.
+A RAG application that answers questions about investing in Canada — the accounts you can hold, the instruments inside them, how they're taxed, who regulates them, and how residency status changes the answer for anyone it applies to. For any Canadian investor, from someone opening their first account to someone who's been investing for a while.
 
-> ⚠️ **Not to be taken as financial or tax advice.** This project is for
-> educational purposes only. Answers are generated from public government
-> sources and may be incomplete or out of date. Consult a financial advisor
-> or the CRA directly before making financial decisions.
+> ⚠️ **Not financial or tax advice.** This is an educational project.
+> Answers are generated from public government and government-endorsed
+> sources and may be incomplete or out of date. Consult a licensed advisor
+> or the CRA before making financial decisions.
 
 ## Table of contents
 
