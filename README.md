@@ -1,46 +1,54 @@
 # Canadian Investing Assistant
 
-A RAG application that answers questions about investing in Canada —
-accounts, instruments, taxation, regulation/investor protection, and
-the residency-specific rules that trip up new Canadians and permanent
-residents.
+A RAG application that answers questions about investing in Canada — the accounts you can hold, the instruments inside them, how they're taxed, who regulates them, and how residency status changes the answer for anyone it applies to. For any Canadian investor, from someone opening their first TFSA to someone who's held one for a decade.
 
-> ⚠️ **Not financial or tax advice.** This project is for educational
-> purposes only. Answers are generated from public government sources
-> and may be incomplete or out of date. Consult a licensed advisor or
-> the CRA directly before making financial decisions.
+> ⚠️ **Not to be taken as financial or tax advice.** This project is for
+> educational purposes only. Answers are generated from public government
+> sources and may be incomplete or out of date. Consult a financial advisor
+> or the CRA directly before making financial decisions.
 
 ## Table of contents
 
-- [Problem description](#problem-description)
-- [Scope](#scope)
-- [Architecture](#architecture)
-- [Dataset](#dataset)
-- [Setup](#setup)
-- [Usage](#usage)
-- [Evaluation](#evaluation)
-- [Monitoring](#monitoring)
-- [Project structure](#project-structure)
-- [License](#license)
+- [Canadian Investing Assistant](#canadian-investing-assistant)
+  - [Table of contents](#table-of-contents)
+  - [Problem description](#problem-description)
+  - [Scope](#scope)
+  - [Architecture](#architecture)
+  - [Dataset](#dataset)
+  - [Setup](#setup)
+    - [Prerequisites](#prerequisites)
+    - [1. Clone and configure](#1-clone-and-configure)
+    - [2. Run everything via Docker Compose](#2-run-everything-via-docker-compose)
+    - [3. (Optional) Re-run ingestion yourself](#3-optional-re-run-ingestion-yourself)
+    - [4. Run evaluations](#4-run-evaluations)
+  - [Usage](#usage)
+  - [Evaluation](#evaluation)
+    - [Retrieval evaluation](#retrieval-evaluation)
+    - [LLM evaluation](#llm-evaluation)
+    - [Best practices implemented](#best-practices-implemented)
+  - [Monitoring](#monitoring)
+  - [Project structure](#project-structure)
+  - [License](#license)
 
 ## Problem description
 
-Investing in Canada is scattered across sources with no single place
-to ask a plain-language question: the accounts you can hold (TFSA,
-RRSP, FHSA, RESP, RDSP, RRIF, LIRA/LRSP), the instruments inside them,
-how they're taxed, who regulates them and what protects your money if
-a dealer or bank fails, and — the part generic financial advice
-usually misses — how residency and immigration status change the
-answer. New Canadians and permanent residents in particular struggle
-to find clear, consolidated answers: generic advice online is often
-US-centric, and government pages are scattered across canada.ca, CIRO,
-the provincial securities regulators, CIPF, and CDIC.
+Investing in Canada is scattered across sources with no single place to ask a
+plain-language question: the types of accounts you can hold, the instruments
+inside them, how they're taxed, who regulates them, and what protects your
+money if a dealer or bank fails. Government pages are spread across canada.ca,
+CIRO, the provincial securities regulators, CIPF, and CDIC, and a lot of the
+advice available online is US-centric or written for one specific situation
+rather than yours. On top of that, residency and immigration status change the
+answer to many of these questions in ways generic advice usually misses
+entirely — a real gap for newcomers, permanent residents, and anyone who's
+spent time as a non-resident, not just an edge case.
 
-This project builds a RAG assistant over official and government-
-endorsed Canadian sources so users can ask natural-language questions
-(e.g. *"I landed as a PR eight months ago, can I open an FHSA?"* or
-*"what happens to my TFSA if I move abroad?"*) and get a grounded,
-cited answer instead of having to piece it together themselves.
+This project builds a RAG assistant over official and government-endorsed
+Canadian sources so any investor can ask a natural-language question and get
+a grounded, cited answer instead of piecing it together themselves — e.g.,
+*"how are my TFSA withdrawals taxed?"*, *"what's the difference between a LIRA
+and an RRSP?"*, or, for the situations generic advice tends to skip,
+*"I landed as a PR eight months ago, can I open an FHSA?"*
 
 ## Scope
 
@@ -53,11 +61,8 @@ general personal finance:
 4. **Regulation & investor protection** — CIRO, provincial regulators (AMF for Quebec), CIPF (brokerage insolvency), CDIC (deposit/GIC insurance)
 5. **Residency & newcomer-specific rules** — the differentiator: foreign property reporting, first-year tax residency, departure tax, CPP/OAS as they interact with investing decisions
 
-**Explicitly out of scope** — different domains, not just unhandled
-edge cases: budgeting, debt/credit, general insurance (life/auto/
-home), real estate/mortgages as an asset class (FHSA stays in as a
-savings vehicle; rental-property investing doesn't), business/
-corporate tax and incorporation, estate law beyond account-death
+**Explicitly out of scope** — different domains, not just unhandled edge cases: budgeting, debt/credit, general insurance (life/auto/home), real estate/mortgages
+as an asset class (FHSA stays in as a savings vehicle; rental-property investing doesn't), business/corporate tax and incorporation, estate law beyond account-death
 rules, and personalized investment advice or recommendations.
 
 ## Architecture
@@ -81,10 +86,8 @@ CRA / CIRO / AMF / ESDC / OSC / CIPF / CDIC / FSRA / Retraite Québec + secondar
  Streamlit UI ──── feedback (👍/👎) + traces ──► Langfuse Cloud (dashboard, LLM-as-judge eval)
 ```
 
-Every stage past "knowledge base" is a real, evaluated decision, not
-the obvious default — see [Evaluation](#evaluation) for the numbers
-that justify hybrid search, reranking, and query rewriting, and why
-retrieval and generation each landed on the model/approach they did.
+Every stage past "knowledge base" is a real, evaluated decision, not the obvious
+default — see [Evaluation](#evaluation) for the numbers that justify hybrid search, reranking, and query rewriting, and why retrieval and generation each landed on the model/approach they did.
 
 ## Dataset
 
@@ -111,7 +114,7 @@ a clean corpus all live in [data/README.md](data/README.md).
 ### Prerequisites
 
 - Docker & Docker Compose
-- [uv](https://docs.astral.sh/uv/) (for local dev outside containers — not pip/conda)
+- [uv](https://docs.astral.sh/uv/) (for local dev outside containers)
 - An OpenAI API key
 - A [Langfuse Cloud](https://cloud.langfuse.com) account (free tier) for tracing/monitoring
 
@@ -137,7 +140,7 @@ don't need to change this value yourself either way.
 
 ```bash
 uv sync
-uv run playwright install chromium   # needed for the CRA/ESDC/CIRO/AMF/FSRA/Retraite Québec fetch path — see below
+uv run playwright install chromium  # needed for the CRA/ESDC/CIRO/AMF/FSRA/Retraite Québec fetch path — see below
 ```
 
 ### 2. Run everything via Docker Compose
@@ -150,10 +153,10 @@ docker compose up -d --build app
 - App: http://localhost:8501
 - Qdrant: http://localhost:6333
 
-This starts the app against the already-fetched, already-embedded
-corpus (Qdrant's data persists in a named Docker volume). You only
-need the steps below if you want to re-fetch the dataset yourself or
-inspect/re-run the ingestion pipeline.
+This starts the app against the already-fetched, already-embedded corpus
+(Qdrant's data persists in a named Docker volume). You only need the steps
+below if you want to re-fetch the dataset yourself or inspect/re-run the
+ingestion pipeline.
 
 ### 3. (Optional) Re-run ingestion yourself
 
@@ -211,9 +214,9 @@ uv run python monitoring/build_dashboard.py  # builds the Langfuse dashboard (on
 
 Open the Streamlit app and ask a question, e.g.:
 
-- *"I became a permanent resident 8 months ago — can I open an FHSA?"*
 - *"What's the difference between TFSA and RRSP contribution room?"*
-- *"I just moved to Canada, can I open a TFSA right away?"*
+- *"Who protects my money if my investment broker goes bankrupt?"*
+- *"I became a permanent resident 8 months ago — can I open an FHSA?"*
 
 Each answer includes:
 
