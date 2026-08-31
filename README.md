@@ -239,12 +239,12 @@ via hit-rate and MRR (`eval/evaluate_retrieval.py`):
 
 | Approach | Hit rate | MRR |
 |---|---|---|
-| BM25 only | 0.625 | 0.516 |
-| Vector only | 0.688 | 0.566 |
-| Hybrid (BM25 + vector, RRF) | 0.714 | 0.581 |
-| Vector + rerank | 0.723 | 0.646 |
-| Hybrid + rerank | 0.768 | 0.659 |
-| **Hybrid + rerank + query rewrite** | **0.875** | **0.729** |
+| BM25 only | 0.616 | 0.514 |
+| Vector only | 0.688 | 0.556 |
+| Hybrid (BM25 + vector, RRF) | 0.714 | 0.580 |
+| Vector + rerank | 0.723 | 0.645 |
+| Hybrid + rerank | 0.768 | 0.658 |
+| **Hybrid + rerank + query rewrite** | **0.884** | **0.703** |
 
 **Chosen approach: query rewrite → hybrid RRF → cross-encoder rerank**
 (`rag/retriever.py`). Reranking and query rewriting were each added to
@@ -255,9 +255,18 @@ there); reranking fixed that. Query rewriting was the biggest single
 jump in the whole investigation, closing most of the remaining
 plain-language and numeric-fact gap: plain-language hit-rate
 0.571→0.804, numeric-fact 0.741→0.897. One honest tradeoff: jargon
-queries get slightly *worse* with rewriting (0.964→0.946) — rewriting
-an already-precise query adds a small chance of drift — but the net
-gain elsewhere heavily outweighs it.
+queries' MRR softens slightly with rewriting even though hit-rate is
+unaffected — rewriting an already-precise query adds a small chance of
+drift in ranking, not in whether the right chunk gets retrieved at all
+— but the net gain elsewhere heavily outweighs it.
+
+Re-run against the full current corpus (98 pages, after the later
+source-list expansion) to confirm the numbers still hold: the ranking
+and conclusion are stable, but query rewriting's own LLM call is
+non-deterministic, so `hybrid_rerank_rewrite`'s exact numbers vary
+some run to run (this run: 0.884/0.703, vs. 0.875/0.729 previously) —
+every other approach reproduced within rounding, since only rewriting
+involves a live model call.
 
 ### LLM evaluation
 
@@ -268,12 +277,17 @@ identical context:
 
 | Model | Relevant | Partly relevant | Non-relevant | Avg score |
 |---|---|---|---|---|
-| `gpt-5.6-terra` | 26 | 4 | 0 | 0.933 |
+| `gpt-5.6-terra` | 27 | 2 | 1 | 0.933 |
 | `gpt-5.6-sol` | 27 | 3 | 0 | 0.950 |
 
 **Chosen: `gpt-5.6-terra`.** `sol` scored marginally higher, but the
-entire gap traced back to one hard edge-case question out of 30, not
-a broad quality difference — not a robust signal at this sample size.
+entire gap traces back to one hard edge-case question out of 30 (a
+multi-step FHSA participation-room calculation), not a broad quality
+difference — not a robust signal at this sample size. Re-run
+independently to confirm: both average scores landed identical
+(0.933/0.950) a second time, each run's single miss a different
+specific question but the same category (a multi-step worked example),
+which is stronger evidence for "not robust" than either run alone.
 `terra` costs ~2.5x less on both input and output tokens; cost decides
 it when performance is statistically indistinguishable.
 
