@@ -126,7 +126,7 @@ a clean corpus all live in [data/README.md](data/README.md).
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/<your-username>/canadian-investing-rag.git
+git clone https://github.com/salexyun/canadian-investing-rag.git
 cd canadian-investing-rag
 cat > .env << 'EOF'
 OPENAI_API_KEY=
