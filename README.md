@@ -16,9 +16,10 @@ A RAG application that answers questions about investing in Canada — the accou
 - [Setup](#setup)
   - [Prerequisites](#prerequisites)
   - [1. Clone and configure](#1-clone-and-configure)
-  - [2. Run everything via Docker Compose](#2-run-everything-via-docker-compose)
-  - [3. (Optional) Re-run ingestion yourself](#3-optional-re-run-ingestion-yourself)
-  - [4. Run evaluations](#4-run-evaluations)
+  - [2. Load the corpus into Qdrant (one-time)](#2-load-the-corpus-into-qdrant-one-time)
+  - [3. Run the app](#3-run-the-app)
+  - [4. (Optional) Re-fetch the source pages yourself](#4-optional-re-fetch-the-source-pages-yourself)
+  - [5. Run evaluations](#5-run-evaluations)
 - [Usage](#usage)
 - [Evaluation](#evaluation)
   - [Retrieval evaluation](#retrieval-evaluation)
@@ -147,25 +148,39 @@ uv sync
 uv run playwright install chromium  # needed for the CRA/ESDC/CIRO/AMF/FSRA/Retraite Québec fetch path — see below
 ```
 
-### 2. Run everything via Docker Compose
+### 2. Load the corpus into Qdrant (one-time)
+
+`data/raw/manifest.jsonl` and `data/processed/chunks.jsonl` are
+committed to the repo — already fetched and chunked, see
+[data/README.md](data/README.md) — so this step is a local CPU embed,
+not a re-fetch:
 
 ```bash
 docker compose up -d vector-db
+uv run python ingestion/load_vector_store.py
+```
+
+This reads the committed `chunks.jsonl`, embeds it with a local model
+(`BAAI/bge-small-en-v1.5`, no GPU needed — well under a minute for the
+full corpus), and upserts into Qdrant. Qdrant's data then persists in
+a named Docker volume, so this only needs to run once — re-run it any
+time you regenerate `chunks.jsonl` yourself (see step 4) to refresh
+what's loaded.
+
+### 3. Run the app
+
+```bash
 docker compose up -d --build app
 ```
 
 - App: http://localhost:8501
 - Qdrant: http://localhost:6333
 
-This starts the app against the already-fetched, already-embedded corpus
-(Qdrant's data persists in a named Docker volume). You only need the steps
-below if you want to re-fetch the dataset yourself or inspect/re-run the
-ingestion pipeline.
+### 4. (Optional) Re-fetch the source pages yourself
 
-### 3. (Optional) Re-run ingestion yourself
-
-The dataset is fetched, chunked, and loaded by three scripts, which
-can be run directly:
+The committed `manifest.jsonl`/`chunks.jsonl` are a snapshot from the
+last real crawl. Re-run the full pipeline if you want the source pages
+fetched fresh instead — it's the same three scripts, run directly:
 
 ```bash
 uv run python ingestion/fetch.py            # data/raw/manifest.jsonl
@@ -201,11 +216,13 @@ docker compose exec kestra sh /app/kestra flow namespace update \
 
 Trigger a run from the Kestra UI (or `POST
 /api/v1/main/executions/canadian-investing-rag/canadian_investing_ingestion`),
-optionally passing `only_ids` to scope it. The flow runs the same
-three scripts above, unchanged, as sibling containers on the compose
-network.
+passing `repo_root` — the **host** filesystem path to your clone of
+this repo (e.g. `/home/you/canadian-investing-rag`; no default is set,
+since that path is specific to your machine) — and optionally
+`only_ids` to scope the run. The flow runs the same three scripts
+above, unchanged, as sibling containers on the compose network.
 
-### 4. Run evaluations
+### 5. Run evaluations
 
 ```bash
 uv run python eval/build_ground_truth.py     # generates the retrieval eval question set

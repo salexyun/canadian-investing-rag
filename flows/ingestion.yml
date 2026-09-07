@@ -19,15 +19,17 @@ description: |
 inputs:
   - id: repo_root
     type: STRING
-    defaults: /Users/alexyun/canadian-investing-rag
     description: |
-      Host filesystem path to the repo clone. Must be a *host* path,
-      not a path inside the Kestra container: Kestra launches sibling
-      containers via the host's mounted docker.sock (Docker-outside-
-      of-Docker), so bind-mount sources are resolved by the host
-      Docker daemon, not from Kestra's own container filesystem.
-      Change this if the repo lives somewhere else on the machine
-      running `docker compose up`.
+      Host filesystem path to your repo clone (e.g.
+      /home/you/canadian-investing-rag), no trailing slash. Must be a
+      *host* path, not a path inside the Kestra container: Kestra
+      launches sibling containers via the host's mounted docker.sock
+      (Docker-outside-of-Docker), so bind-mount sources are resolved
+      by the host Docker daemon, not from Kestra's own container
+      filesystem. No default on purpose -- this is specific to
+      whoever's machine is running `docker compose up`, and a
+      committed default would silently point at its original author's
+      machine instead.
   - id: only_ids
     type: STRING
     required: false

@@ -1,8 +1,8 @@
 """Interactive CLI for manually testing the RAG flow.
 
-Not part of the eval pipeline, not the Streamlit interface (not built
-yet) — just a REPL wrapper around rag.RAG so the system can be tried by
-hand with real, freely-chosen questions.
+Not part of the eval pipeline, and not the Streamlit interface
+(app/main.py) — just a REPL wrapper around rag.RAG so the system can be
+tried by hand with real, freely-chosen questions, without a browser.
 
 Usage:
     python rag/chat.py

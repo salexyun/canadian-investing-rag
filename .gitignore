@@ -12,10 +12,17 @@ venv/
 .env
 *.env.local
 
-# Data (raw/processed docs can be large; fetch via ingestion pipeline)
+# Data — raw HTML pages stay out of git (14MB, and regenerable via
+# ingestion/fetch.py, an hour-long bot-protection-safe crawl). manifest.jsonl
+# and chunks.jsonl are small (~1.7MB combined) and committed on purpose so a
+# fresh clone can go straight to `ingestion/load_vector_store.py` (a local
+# CPU embed, well under a minute) instead of needing the full fetch+chunk
+# pipeline just to get the app running — see README.md's Setup section.
 data/raw/*
-data/processed/*
+!data/raw/manifest.jsonl
 !data/raw/.gitkeep
+data/processed/*
+!data/processed/chunks.jsonl
 !data/processed/.gitkeep
 
 # Vector DB / local storage
