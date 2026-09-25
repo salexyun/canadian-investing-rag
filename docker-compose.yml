@@ -29,7 +29,7 @@ services:
       - ./data:/app/data
 
   vector-db:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.19.1
     ports:
       - "6333:6333"
     volumes:
@@ -58,7 +58,7 @@ services:
   # this project's actual traffic/data volume, not production HA. UI/API at
   # http://localhost:8080.
   kestra:
-    image: kestra/kestra:latest
+    image: kestra/kestra:v1.3.40
     command: server local
     user: root # matches Kestra's own single-container docs -- the image's
     # default non-root user can't write kestra_db's embedded H2 file

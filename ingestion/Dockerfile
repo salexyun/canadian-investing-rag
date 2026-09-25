@@ -7,9 +7,9 @@
 # load flow tasks (../flows/ingestion.yml); it shares the same
 # pyproject.toml/uv.lock as the app -- one dependency set for the whole
 # project, this image just adds the browser binary on top.
-FROM python:3.11-slim
+FROM python:3.11.16-slim
 
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+COPY --from=ghcr.io/astral-sh/uv:0.11.21 /uv /uvx /bin/
 
 WORKDIR /app
 
