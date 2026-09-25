@@ -88,12 +88,22 @@ services:
       # an uppercase letter and a digit.
       KESTRA_USER: ${KESTRA_USER:-admin@localhost.dev}
       KESTRA_PASSWORD: ${KESTRA_PASSWORD:-Kestra123}
+      #
+      # volume-enabled: Kestra 1.x ignores a Docker task runner's
+      # `volumes` unless this is on -- silently, no error. Without it,
+      # flows/ingestion.yml's data/ bind mount is dropped and every task
+      # works on the container's own throwaway filesystem.
       KESTRA_CONFIGURATION: |
         kestra:
           server:
             basic-auth:
               username: ${KESTRA_USER:-admin@localhost.dev}
               password: ${KESTRA_PASSWORD:-Kestra123}
+          plugins:
+            configurations:
+              - type: io.kestra.plugin.scripts.runner.docker.Docker
+                values:
+                  volume-enabled: true
       # Surfaced to flows as {{ envs.host_repo_root }} -- the default for
       # flows/ingestion.yml's repo_root input. Compose resolves ${PWD}
       # on the host, i.e. the directory you ran `docker compose` from,

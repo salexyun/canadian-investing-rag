@@ -12,3 +12,9 @@
 __pycache__
 *.pyc
 .DS_Store
+
+# Data -- always bind-mounted at runtime (./data for the app, the flow's
+# repo_root/data for ingestion tasks), never baked in. Baking it in once
+# hid a real bug: Kestra was silently dropping the ingestion tasks' mount,
+# and the flow still "succeeded" against the stale copy inside the image.
+data/
