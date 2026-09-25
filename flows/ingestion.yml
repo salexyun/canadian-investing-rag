@@ -19,17 +19,18 @@ description: |
 inputs:
   - id: repo_root
     type: STRING
+    required: false
     description: |
       Host filesystem path to your repo clone (e.g.
-      /home/you/canadian-investing-rag), no trailing slash. Must be a
-      *host* path, not a path inside the Kestra container: Kestra
-      launches sibling containers via the host's mounted docker.sock
-      (Docker-outside-of-Docker), so bind-mount sources are resolved
-      by the host Docker daemon, not from Kestra's own container
-      filesystem. No default on purpose -- this is specific to
-      whoever's machine is running `docker compose up`, and a
-      committed default would silently point at its original author's
-      machine instead.
+      /home/you/canadian-investing-rag), no trailing slash. Leave empty
+      to use the path docker-compose.yml passes in (ENV_HOST_REPO_ROOT,
+      the directory `docker compose up` ran from) -- only set this if
+      you started Kestra from somewhere else. Must be a *host* path, not
+      a path inside the Kestra container: Kestra launches sibling
+      containers via the host's mounted docker.sock
+      (Docker-outside-of-Docker), so bind-mount sources are resolved by
+      the host Docker daemon, not from Kestra's own container
+      filesystem.
   - id: only_ids
     type: STRING
     required: false
@@ -52,7 +53,7 @@ tasks:
       pullPolicy: NEVER # locally built, not pushed to any registry
       networkMode: canadian-investing-rag_default # compose's auto-named default network -- lets `load` below resolve `vector-db`
       volumes:
-        - "{{ inputs.repo_root }}/data:/app/data"
+        - "{{ inputs.repo_root ?? envs.host_repo_root }}/data:/app/data"
     commands:
       - cd /app && uv run python ingestion/fetch.py {% if inputs.only_ids %}--only {{ inputs.only_ids }}{% endif %}
 
@@ -64,7 +65,7 @@ tasks:
       pullPolicy: NEVER
       networkMode: canadian-investing-rag_default
       volumes:
-        - "{{ inputs.repo_root }}/data:/app/data"
+        - "{{ inputs.repo_root ?? envs.host_repo_root }}/data:/app/data"
     commands:
       - cd /app && uv run python ingestion/chunk.py {% if inputs.only_ids %}--only {{ inputs.only_ids }}{% endif %}
 
@@ -76,7 +77,7 @@ tasks:
       pullPolicy: NEVER
       networkMode: canadian-investing-rag_default
       volumes:
-        - "{{ inputs.repo_root }}/data:/app/data"
+        - "{{ inputs.repo_root ?? envs.host_repo_root }}/data:/app/data"
     env:
       # container-network hostname -- same override reasoning as app's
       # docker-compose.yml entry, "localhost" would mean this task's own

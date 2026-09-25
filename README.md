@@ -204,23 +204,30 @@ docker compose build ingestion         # image with the Playwright/Chromium bina
 docker compose up -d kestra
 ```
 
-Open http://localhost:8080, create the local admin account through
-Kestra's own first-run wizard (one-time, local-only — this isn't
-exposed outside your machine), then sync the flow definition in:
+Kestra registers `flows/ingestion.yml` itself on startup — no
+first-run wizard or manual sync step. Open http://localhost:8080 and
+log in with the local-only defaults, `admin@localhost.dev` /
+`Kestra123` (set `KESTRA_USER`/`KESTRA_PASSWORD` in `.env` to use your
+own), then open **canadian-investing-rag → canadian_investing_ingestion**
+and click **Execute**. Both inputs are optional:
+
+- `only_ids` — space-separated source ids to scope the run (e.g.
+  `cra_tfsa_calculate_room`), handy for a quick check instead of the
+  hour-plus full fetch.
+- `repo_root` — the **host** path to this repo. Defaults to the
+  directory you ran `docker compose up` from, so leave it empty unless
+  you started Kestra from somewhere else.
+
+Or trigger it from the command line:
 
 ```bash
-docker compose exec kestra sh /app/kestra flow namespace update \
-  canadian-investing-rag /app/flows \
-  --server http://localhost:8080 --user '<your-admin-email>:<your-password>'
+curl -u 'admin@localhost.dev:Kestra123' -X POST -F only_ids=cra_tfsa_calculate_room \
+  http://localhost:8080/api/v1/main/executions/canadian-investing-rag/canadian_investing_ingestion
 ```
 
-Trigger a run from the Kestra UI (or `POST
-/api/v1/main/executions/canadian-investing-rag/canadian_investing_ingestion`),
-passing `repo_root` — the **host** filesystem path to your clone of
-this repo (e.g. `/home/you/canadian-investing-rag`; no default is set,
-since that path is specific to your machine) — and optionally
-`only_ids` to scope the run. The flow runs the same three scripts
-above, unchanged, as sibling containers on the compose network.
+The flow runs the same three scripts above, unchanged, as sibling
+containers on the compose network. After editing `flows/ingestion.yml`,
+`docker compose restart kestra` re-registers it.
 
 ### 5. Run evaluations
 

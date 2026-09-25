@@ -59,7 +59,46 @@ services:
   # http://localhost:8080.
   kestra:
     image: kestra/kestra:v1.3.40
-    command: server local
+    # Starts the server, waits until its API answers, then registers
+    # flows/ingestion.yml with the same `flow namespace update` CLI call
+    # that used to be a manual README step -- so `docker compose up -d
+    # kestra` alone gives a ready-to-run flow. Kestra's own "load flows
+    # from a folder" options were tried first and don't work on this
+    # version: `server local --flow-path` runs before plugins are
+    # registered (rejects shell.Commands as an unknown type), and the
+    # micronaut.io.watch file sync fails flow validation on a missing
+    # tenantId. Re-runs on every start, so edits to flows/ are picked up
+    # by `docker compose restart kestra`. The trap forwards `docker stop`
+    # to the server, since sh (not Kestra) is PID 1 here.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        /app/kestra server local --no-tutorials &
+        pid=$$!
+        trap 'kill $$pid; wait $$pid' TERM INT
+        until curl -fs -o /dev/null http://localhost:8080/api/v1/configs; do sleep 2; done
+        /app/kestra flow namespace update canadian-investing-rag /app/flows \
+          --server http://localhost:8080 --user "$$KESTRA_USER:$$KESTRA_PASSWORD"
+        wait $$pid
+    environment:
+      # Pre-seeds the UI/API login, replacing Kestra's first-run "create
+      # admin account" wizard. Local-only (port 8080 on this machine);
+      # set KESTRA_USER/KESTRA_PASSWORD in .env to use your own. Kestra
+      # requires an email-shaped username and a password with 8+ chars,
+      # an uppercase letter and a digit.
+      KESTRA_USER: ${KESTRA_USER:-admin@localhost.dev}
+      KESTRA_PASSWORD: ${KESTRA_PASSWORD:-Kestra123}
+      KESTRA_CONFIGURATION: |
+        kestra:
+          server:
+            basic-auth:
+              username: ${KESTRA_USER:-admin@localhost.dev}
+              password: ${KESTRA_PASSWORD:-Kestra123}
+      # Surfaced to flows as {{ envs.host_repo_root }} -- the default for
+      # flows/ingestion.yml's repo_root input. Compose resolves ${PWD}
+      # on the host, i.e. the directory you ran `docker compose` from,
+      # which is this repo when following the README.
+      ENV_HOST_REPO_ROOT: ${PWD}
     user: root # matches Kestra's own single-container docs -- the image's
     # default non-root user can't write kestra_db's embedded H2 file
     # (confirmed: omitting this produced a real AccessDeniedException
