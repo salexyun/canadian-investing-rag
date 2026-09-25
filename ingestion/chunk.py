@@ -22,9 +22,10 @@ Strategy (see data/README.md for the reasoning):
   language -> numeric_fact; imperative "how to" -> procedural;
   "for example" -> example; else conceptual) — cheap and debuggable,
   not an LLM call per chunk.
-- ``effective_date`` extraction (regex for a date near a dollar
-  amount) only runs on chunks already classified numeric_fact, to
-  keep false positives down.
+- ``effective_date`` extraction only runs on chunks already classified
+  numeric_fact, and only accepts a date stated as the rule itself
+  ("the TFSA dollar limit for 2026 is $7,000", "effective January 1,
+  2026") -- never a year from a worked example.
 - ``facets`` inherit from the page's ``default_facets`` unmodified —
   safe here specifically because the corpus is already mostly narrow,
   single-topic leaf pages (that was the point of the content-quality
@@ -215,12 +216,28 @@ _HOWTO_RE = re.compile(r"^(how to|to (contribute|withdraw|open|transfer|set up|c
 # numeric_fact, and then extracting the *example's* years as if they were the
 # real effective_date of a current rule. Checked first, highest priority.
 _EXAMPLE_RE = re.compile(r"\bExample:|for example\b|for instance\b")
-_DATE_NEAR_MONEY_RE = re.compile(
-    r"(?:on |effective |as of )?(January|February|March|April|May|June|July|August|"
-    r"September|October|November|December)\s+\d{1,2},?\s+(\d{4})",
+# effective_date patterns: only a date the text states *as the rule itself*,
+# never "any year near a dollar amount". The earlier near-a-limit-word
+# heuristic picked up worked-example years -- CRA's examples often skip the
+# "Example:" marker and go straight into a narrated scenario ("Moira turns
+# 18 in August 2023", "Joe... in 2024", "since the program began in 2009"),
+# which then surfaced in the UI as "as of 2009". Requiring the *generic*
+# limit ("the TFSA dollar limit", not "his RRSP deduction limit" or "her
+# contribution room") keeps a person's own figures in an example out.
+_LIMIT_NOUN = r"(?:(?:annual|lifetime)\s+)?(?:[A-Z]{2,5}\s+)?(?:(?:annual|lifetime)\s+)?(?:(?:dollar|deduction|contribution)\s+)?limit"
+_RULE_DATE_RES = [
+    # "The TFSA dollar limit for 2026 is $7,000"
+    re.compile(rf"\bthe\s+{_LIMIT_NOUN}\s+for\s+(?P<year>20\d{{2}})\s+(?:is|was)\s+\$", re.I),
+    # "for 2025, the annual limit is $32,490"
+    re.compile(rf"\bfor\s+(?P<year>20\d{{2}}),\s+the\s+{_LIMIT_NOUN}\s+is\s+\$", re.I),
+    # "the lifetime limit as of 2026 is $109,000"
+    re.compile(rf"\bthe\s+{_LIMIT_NOUN}\s+as\s+of\s+(?P<year>20\d{{2}})\s+is\s+\$", re.I),
+]
+_EXPLICIT_EFFECTIVE_RE = re.compile(
+    r"\b(?:effective|as of)\s+(?P<month>January|February|March|April|May|June|July|August|"
+    r"September|October|November|December)\s+(?P<day>\d{1,2}),?\s+(?P<year>\d{4})",
     re.I,
 )
-_YEAR_RE = re.compile(r"\b(20\d{2})\b")
 
 
 def classify_content_type(heading: str, text: str) -> str:
@@ -240,26 +257,20 @@ def classify_content_type(heading: str, text: str) -> str:
 
 
 def extract_effective_date(text: str) -> str | None:
-    # Scoped to a date/year found near one of the LIMIT_WORDS, not anywhere a
-    # dollar amount happens to appear — a numeric_fact chunk can still contain
-    # an unrelated year (e.g. a cross-reference), and this must not pick that
-    # up as if it were this fact's effective date.
-    for m in re.finditer(r"\b(limit|deduction limit|dollar limit|contribution room)\b", text, re.I):
-        window = text[max(0, m.start() - 120): m.end() + 120]
-        dm = _DATE_NEAR_MONEY_RE.search(window)
-        if dm:
-            month, year = dm.group(1), dm.group(2)
-            try:
-                from datetime import datetime
-                dt = datetime.strptime(f"{month} {year}", "%B %Y")
-                full = re.search(rf"{month}\s+(\d{{1,2}}),?\s+{year}", window, re.I)
-                day = full.group(1) if full else "1"
-                return f"{year}-{dt.month:02d}-{int(day):02d}"
-            except ValueError:
-                continue
-        ym = _YEAR_RE.search(window)
-        if ym and _MONEY_RE.search(window):
-            return f"{ym.group(1)}-01-01"
+    # An explicit "effective <date>" / "as of <date>" wins; otherwise a
+    # rule-stating "the <limit> for YYYY is $X" gives January 1 of that
+    # year (annual limits take effect then). Anything else -- including
+    # every narrated worked example -- gets None, so the UI and prompt
+    # show no date rather than a misleading one.
+    m = _EXPLICIT_EFFECTIVE_RE.search(text)
+    if m:
+        from datetime import datetime
+        month = datetime.strptime(m.group("month").title(), "%B").month
+        return f"{m.group('year')}-{month:02d}-{int(m.group('day')):02d}"
+    for pattern in _RULE_DATE_RES:
+        m = pattern.search(text)
+        if m:
+            return f"{m.group('year')}-01-01"
     return None
 
 

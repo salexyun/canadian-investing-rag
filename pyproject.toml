@@ -24,7 +24,9 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = []
+dev = [
+    "pytest>=9.1.1",
+]
 
 # torch's default PyPI wheel on Linux drags in the full CUDA/nvidia stack
 # (~8GB) even though this project only does small-model CPU inference

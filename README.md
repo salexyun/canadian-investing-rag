@@ -319,19 +319,21 @@ identical context:
 
 | Model | Relevant | Partly relevant | Non-relevant | Avg score |
 |---|---|---|---|---|
-| `gpt-5.6-terra` | 27 | 2 | 1 | 0.933 |
-| `gpt-5.6-sol` | 27 | 3 | 0 | 0.950 |
+| `gpt-5.6-terra` | 28 | 2 | 0 | 0.967 |
+| `gpt-5.6-sol` | 28 | 2 | 0 | 0.967 |
 
-**Chosen: `gpt-5.6-terra`.** `sol` scored marginally higher, but the
-entire gap traces back to one hard edge-case question out of 30 (a
-multi-step FHSA participation-room calculation), not a broad quality
-difference — not a robust signal at this sample size. Re-run
-independently to confirm: both average scores landed identical
-(0.933/0.950) a second time, each run's single miss a different
-specific question but the same category (a multi-step worked example),
-which is stronger evidence for "not robust" than either run alone.
-`terra` costs ~2.5x less on both input and output tokens; cost decides
-it when performance is statistically indistinguishable.
+**Chosen: `gpt-5.6-terra`.** The two are indistinguishable at this
+sample size. In the two original runs `sol` scored marginally higher
+(0.950 vs 0.933 both times), with the whole gap traced to a single
+hard question out of 30, a different one each run but always the same
+category: a multi-step worked example such as an FHSA
+participation-room calculation. The current run above tied exactly.
+It came after a fix that stopped worked-example years from being shown
+to the model as a chunk's "as of" date (see
+[data/README.md](data/README.md)), and it also cleared `terra`'s one
+non-relevant answer. `terra` costs ~2.5x less on both input and output
+tokens; cost decides it when performance is statistically
+indistinguishable.
 
 Different model per task, not one model everywhere: bulk/simple tasks
 that need no reasoning depth (ground-truth generation, query
@@ -378,6 +380,7 @@ canadian-investing-rag/
 ├── flows/         # Kestra flow definition orchestrating ingestion/
 ├── rag/           # retrieval + prompt construction + LLM call
 ├── eval/          # retrieval eval and LLM eval scripts
+├── tests/         # regression tests (`uv run pytest`)
 ├── app/           # Streamlit UI
 ├── monitoring/    # Langfuse feedback wiring + dashboard config
 ├── data/          # sourcing/schema reference + fetched/processed docs (gitignored)

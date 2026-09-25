@@ -334,9 +334,23 @@ bugs it took to get here:
   from the example's narrative ("Moira... in 2023... in 2025") extracted
   as if they were the current rule's real `effective_date`. Fixed by
   classifying the whole section once and applying it to every
-  sub-chunk; `effective_date` extraction is scoped to a window around
-  actual limit-language ("dollar limit", "deduction limit"), not any
-  date near any dollar amount.
+  sub-chunk.
+- **`effective_date` only from a rule statement, never a scenario
+  year** — the section-level fix above wasn't enough: many CRA worked
+  examples have no `Example:` marker at all and go straight into a
+  narrated scenario ("Joe... when he turned 18 in 2024", "since the
+  program began in 2009"). Those stay `numeric_fact`, and the original
+  extractor — any year within ~120 chars of limit-language plus a
+  dollar amount — took their scenario years as the fact's date, so the
+  UI showed e.g. "as of 2009" on a chunk about the current TFSA limit
+  (caught in external review). Extraction now only accepts a date the
+  text states as the rule itself: "the TFSA dollar limit for 2026 is
+  $7,000", "for 2025, the annual limit is $32,490", or an explicit
+  "effective/as of <full date>". Requiring the generic "the ... limit"
+  also rejects a person's own figures inside an example ("his RRSP
+  deduction limit for 2025 is $10,000", "Isla's contribution room for
+  2024 is $7,000"). 16 dated chunks -> 4, all genuine; regression cases
+  in `tests/test_effective_date.py`.
 - **Structural bug, not a content bug, caused 25/93 pages to initially
   produce zero chunks** — sibling-walking from each heading tag failed
   silently on pages where CRA wraps each heading in its own
@@ -361,7 +375,8 @@ bugs it took to get here:
 
 **Result**: 98 pages -> 1,098 chunks (1,015 primary / 83 secondary).
 Content type: 634 conceptual, 313 example, 77 procedural, 74
-numeric_fact. 16 chunks carry a confirmed `effective_date`.
+numeric_fact. 4 chunks carry an `effective_date`, each a stated rule
+(current TFSA limit x2, 2025 RRSP limit, TFSA lifetime limit).
 
 **5 pages produce zero chunks, all confirmed correct** — a prior pass
 had flagged two of these as real bugs; both turned out to be
