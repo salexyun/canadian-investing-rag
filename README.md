@@ -224,12 +224,30 @@ above, unchanged, as sibling containers on the compose network.
 
 ### 5. Run evaluations
 
+Both evals run against the committed question set
+(`eval/retrieval_ground_truth.jsonl`) — the same one every number in
+[Evaluation](#evaluation) was measured against — and refresh the
+committed `*_results.json` files in place:
+
 ```bash
-uv run python eval/build_ground_truth.py     # generates the retrieval eval question set
 uv run python eval/evaluate_retrieval.py     # eval/retrieval_eval_results.json
 uv run python eval/evaluate_llm.py           # eval/llm_eval_results.json
 uv run python monitoring/build_dashboard.py  # builds the Langfuse dashboard (one-time)
 ```
+
+**(Optional) Generate your own question set.** `build_ground_truth.py`
+is a fresh, non-deterministic LLM run — different questions, so
+different numbers from the tables below. It refuses to overwrite the
+committed set, so write it somewhere else and point the evals at it:
+
+```bash
+uv run python eval/build_ground_truth.py --output /tmp/my_ground_truth.jsonl
+uv run python eval/evaluate_retrieval.py --ground-truth /tmp/my_ground_truth.jsonl
+uv run python eval/evaluate_llm.py --ground-truth /tmp/my_ground_truth.jsonl
+```
+
+(`--force` replaces the committed set instead, if that's genuinely
+what you want.)
 
 ## Usage
 

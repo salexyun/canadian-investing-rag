@@ -15,10 +15,12 @@ that's actually deployed, not a reimplementation that could drift.
 
 Usage:
     python eval/evaluate_retrieval.py
+    python eval/evaluate_retrieval.py --ground-truth /tmp/my_ground_truth.jsonl
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -43,8 +45,8 @@ TOP_K_FINAL = 5  # results actually evaluated for hit-rate/MRR
 TOP_K_RERANK_CANDIDATES = 20  # candidates handed to the cross-encoder before trimming to TOP_K_FINAL
 
 
-def load_ground_truth() -> list[dict]:
-    return [json.loads(line) for line in GROUND_TRUTH_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+def load_ground_truth(path: Path = GROUND_TRUTH_PATH) -> list[dict]:
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def build_rewrite_cache(questions: list[dict]) -> dict[str, str]:
@@ -130,7 +132,11 @@ def evaluate(questions: list[dict], search_fn) -> dict:
 
 
 def main() -> int:
-    questions = load_ground_truth()
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--ground-truth", type=Path, default=GROUND_TRUTH_PATH, help=f"question set to evaluate against (default: {GROUND_TRUTH_PATH.name})")
+    args = parser.parse_args()
+
+    questions = load_ground_truth(args.ground_truth)
     print(f"Loaded {len(questions)} ground-truth questions\n")
 
     methods = build_methods(questions)

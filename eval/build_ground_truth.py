@@ -33,12 +33,19 @@ needed. Other LLM calls in this project (main RAG generation, LLM-judge
 eval) use different, more capable models chosen for what those tasks
 actually need — see README.md's LLM evaluation section.
 
+The committed eval/retrieval_ground_truth.jsonl is the set every number
+in README.md's Evaluation section was measured against. Regenerating it
+is a fresh, non-deterministic LLM run -- different questions, different
+numbers -- so this refuses to overwrite it unless asked to explicitly.
+
 Usage:
-    python eval/build_ground_truth.py
+    python eval/build_ground_truth.py --output /tmp/my_ground_truth.jsonl
+    python eval/build_ground_truth.py --force   # replace the committed set
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import random
 from concurrent.futures import ThreadPoolExecutor
@@ -200,6 +207,18 @@ def generate_for_chunk(client: OpenAI, chunk: dict) -> tuple[list[dict], dict]:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--output", type=Path, default=OUTPUT_PATH, help=f"where to write (default: {OUTPUT_PATH.name})")
+    parser.add_argument("--force", action="store_true", help="overwrite --output if it already exists")
+    args = parser.parse_args()
+    output_path: Path = args.output.resolve()
+    if output_path.exists() and not args.force:
+        print(
+            f"{output_path} already exists -- refusing to overwrite it. Pass --output <path> "
+            "to write somewhere else, or --force to replace it."
+        )
+        return 1
+
     chunks = [json.loads(line) for line in CHUNKS_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
     rng = random.Random(RANDOM_SEED)
     sampled = sample_chunks(chunks, rng)
@@ -219,8 +238,8 @@ def main() -> int:
 
     n_flagged = sum(1 for r in all_records if r["flagged_verbatim"])
 
-    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with OUTPUT_PATH.open("w", encoding="utf-8") as f:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as f:
         for r in all_records:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
@@ -228,7 +247,7 @@ def main() -> int:
         total_usage["input_tokens"] / 1_000_000 * INPUT_PRICE_PER_M
         + total_usage["output_tokens"] / 1_000_000 * OUTPUT_PRICE_PER_M
     )
-    print(f"\n{len(all_records)} questions written to {OUTPUT_PATH.relative_to(REPO_ROOT)}")
+    print(f"\n{len(all_records)} questions written to {output_path}")
     print(f"{n_flagged} still flagged as verbatim-ish after retry (kept, marked for review)")
     print(f"Cost: ${cost:.4f} ({total_usage['input_tokens']} input / {total_usage['output_tokens']} output tokens)")
     return 0

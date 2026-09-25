@@ -28,10 +28,12 @@ search+generate+judge pipeline and crashed with a segfault.
 
 Usage:
     python eval/evaluate_llm.py
+    python eval/evaluate_llm.py --ground-truth /tmp/my_ground_truth.jsonl
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import random
 import sys
@@ -125,7 +127,11 @@ def _rag_instructions() -> str:
 
 
 def main() -> int:
-    all_questions = [json.loads(line) for line in GROUND_TRUTH_PATH.read_text(encoding="utf-8").splitlines() if line.strip()]
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--ground-truth", type=Path, default=GROUND_TRUTH_PATH, help=f"question set to sample from (default: {GROUND_TRUTH_PATH.name})")
+    args = parser.parse_args()
+
+    all_questions = [json.loads(line) for line in args.ground_truth.read_text(encoding="utf-8").splitlines() if line.strip()]
     rng = random.Random(RANDOM_SEED)
     sample = rng.sample(all_questions, SAMPLE_SIZE)
     print(f"Sampled {len(sample)} questions, comparing {CANDIDATE_MODELS} (judge: {JUDGE_MODEL})")
